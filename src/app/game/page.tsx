@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface Character {
   x: number;
@@ -115,7 +115,7 @@ export default function GamePage() {
   };
 
   const updateCharacter = (char: Character): Character => {
-    let newChar = { ...char };
+    const newChar = { ...char };
     
     // ͛ni(
     newChar.velocityY += GRAVITY;
@@ -146,7 +146,7 @@ export default function GamePage() {
     return newChar;
   };
 
-  const gameLoop = () => {
+  const gameLoop = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -168,9 +168,9 @@ export default function GamePage() {
     });
     
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-  };
+  }, []);
 
-  const handleJump = () => {
+  const handleJump = useCallback(() => {
     if (!character.isJumping) {
       setCharacter(prev => ({
         ...prev,
@@ -178,7 +178,7 @@ export default function GamePage() {
         isJumping: true
       }));
     }
-  };
+  }, [character.isJumping, JUMP_FORCE]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -205,7 +205,7 @@ export default function GamePage() {
       }
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [character.isJumping]);
+  }, [gameLoop, handleJump]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-yellow-200 to-pink-200 p-4">
