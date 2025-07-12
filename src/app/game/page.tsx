@@ -33,6 +33,7 @@ export default function GamePage() {
   const gameLoopRef = useRef<number | null>(null);
   const keysRef = useRef<{ [key: string]: boolean }>({});
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [character, setCharacter] = useState<Character>({
     x: 100,
     y: 300,
@@ -43,7 +44,9 @@ export default function GamePage() {
     animationFrame: 0,
   });
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [collectibles, setCollectibles] = useState<Collectible[]>([]);
   const [score, setScore] = useState(0);
   const [gameSpeed, setGameSpeed] = useState(2);
@@ -164,7 +167,7 @@ export default function GamePage() {
   };
 
   // 背景描画
-  const drawBackground = (ctx: CanvasRenderingContext2D) => {
+  const drawBackground = useCallback((ctx: CanvasRenderingContext2D) => {
     // 空のグラデーション
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, '#87CEEB');
@@ -193,15 +196,29 @@ export default function GamePage() {
       const x = (i * 20 + (score * gameSpeed) % 800) % 800;
       ctx.fillRect(x, 375, 3, 8);
     }
-  };
+  }, [score, gameSpeed]);
 
-  // 衝突判定
-  const checkCollision = (rect1: any, rect2: any) => {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-  };
+  // 衝突判定（AABB - Axis-Aligned Bounding Box）
+  interface Rectangle {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
+  
+  const checkCollision = useCallback((rect1: Rectangle, rect2: Rectangle): boolean => {
+    // 2つの矩形が重なっているかをチェック
+    // 左端が相手の右端より左にあり、かつ右端が相手の左端より右にある
+    const horizontalOverlap = rect1.x < rect2.x + rect2.width && 
+                             rect1.x + rect1.width > rect2.x;
+    
+    // 上端が相手の下端より上にあり、かつ下端が相手の上端より下にある
+    const verticalOverlap = rect1.y < rect2.y + rect2.height && 
+                           rect1.y + rect1.height > rect2.y;
+    
+    // 水平方向と垂直方向の両方で重なっている場合のみ衝突
+    return horizontalOverlap && verticalOverlap;
+  }, []);
 
   // ゲームループ（修正版）
   const gameLoop = useCallback(() => {
@@ -295,22 +312,35 @@ export default function GamePage() {
     });
 
     // 衝突判定
-    obstacles.forEach(obstacle => {
-      if (checkCollision(character, obstacle)) {
-        setGameOver(true);
-      }
+    setObstacles(currentObstacles => {
+      setCharacter(currentCharacter => {
+        currentObstacles.forEach(obstacle => {
+          if (checkCollision(currentCharacter, obstacle)) {
+            setGameOver(true);
+          }
+        });
+        return currentCharacter;
+      });
+      return currentObstacles;
     });
 
     // アイテム収集判定
-    setCollectibles(prev => 
-      prev.map(item => {
-        if (!item.collected && checkCollision(character, item)) {
-          setScore(s => s + 50);
-          return { ...item, collected: true };
-        }
+    setCollectibles(prev => {
+      setCharacter(currentCharacter => {
+        return currentCharacter;
+      });
+      
+      return prev.map(item => {
+        setCharacter(currentCharacter => {
+          if (!item.collected && checkCollision(currentCharacter, item)) {
+            setScore(s => s + 50);
+            item.collected = true;
+          }
+          return currentCharacter;
+        });
         return item;
-      })
-    );
+      });
+    });
 
     // スコア更新
     setScore(prev => prev + 1);
@@ -318,16 +348,29 @@ export default function GamePage() {
     // ゲーム速度調整
     setGameSpeed(prev => Math.min(prev + 0.002, 5));
 
-    // 描画
+    // 描画（最新のstateを取得して描画）
     ctx.clearRect(0, 0, 800, 400);
     drawBackground(ctx);
-    drawCharacter(ctx, character);
-    obstacles.forEach(obs => drawObstacle(ctx, obs));
-    collectibles.forEach(item => drawCollectible(ctx, item));
+    
+    // 最新のstateを取得して描画
+    setCharacter(currentCharacter => {
+      drawCharacter(ctx, currentCharacter);
+      return currentCharacter;
+    });
+    
+    setObstacles(currentObstacles => {
+      currentObstacles.forEach(obs => drawObstacle(ctx, obs));
+      return currentObstacles;
+    });
+    
+    setCollectibles(currentCollectibles => {
+      currentCollectibles.forEach(item => drawCollectible(ctx, item));
+      return currentCollectibles;
+    });
 
     // 次のフレーム
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [gameStarted, gameOver, character, obstacles, collectibles, gameSpeed, score]);
+  }, [gameStarted, gameOver, drawBackground, gameSpeed, checkCollision]);
 
   // ゲームループ開始
   useEffect(() => {
