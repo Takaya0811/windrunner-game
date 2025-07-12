@@ -1,18 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
 interface Character {
   x: number;
   y: number;
   width: number;
   height: number;
-  velocityX: number;
   velocityY: number;
   isJumping: boolean;
-  isOnGround: boolean;
   animationFrame: number;
-  animationTimer: number;
 }
 
 interface Obstacle {
@@ -20,426 +17,55 @@ interface Obstacle {
   y: number;
   width: number;
   height: number;
-  color: string;
+  type: 'cactus' | 'bird';
 }
 
-interface GameState {
-  score: number;
-  gameOver: boolean;
-  gameStarted: boolean;
+interface Collectible {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  collected: boolean;
 }
 
 export default function GamePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const gameLoopRef = useRef<number>();
-  const keysPressed = useRef<Set<string>>(new Set());
+  const gameLoopRef = useRef<number | null>(null);
+  const keysRef = useRef<{ [key: string]: boolean }>({});
   
   const [character, setCharacter] = useState<Character>({
     x: 100,
     y: 300,
     width: 40,
     height: 60,
-    velocityX: 0,
     velocityY: 0,
     isJumping: false,
-    isOnGround: true,
     animationFrame: 0,
-    animationTimer: 0
   });
-
+  
   const [obstacles, setObstacles] = useState<Obstacle[]>([]);
-  const [gameState, setGameState] = useState<GameState>({
-    score: 0,
-    gameOver: false,
-    gameStarted: false
-  });
+  const [collectibles, setCollectibles] = useState<Collectible[]>([]);
+  const [score, setScore] = useState(0);
+  const [gameSpeed, setGameSpeed] = useState(2);
+  const [gameOver, setGameOver] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
 
-  // ゲーム定数
-  const GRAVITY = 0.8;
-  const JUMP_FORCE = -15;
-  const GROUND_Y = 300;
-  const CANVAS_WIDTH = 800;
-  const CANVAS_HEIGHT = 400;
-  const PLAYER_SPEED = 5;
-  const OBSTACLE_SPEED = 3;
-
-  // キャラクターの描画
-  const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) => {
-    const { x, y, width, height, animationFrame } = char;
-    
-    // 影
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(x + 5, GROUND_Y + 55, width - 10, 8);
-    
-    // 体（明るいピンク）
-    ctx.fillStyle = '#FF69B4';
-    ctx.fillRect(x + 8, y + 20, width - 16, height - 30);
-    
-    // 頭（薄いピンク）
-    ctx.fillStyle = '#FFB6C1';
-    const headSize = width * 0.8;
-    ctx.fillRect(x + (width - headSize) / 2, y - 10, headSize, headSize * 0.8);
-    
-    // 髪（明るい茶色）
-    ctx.fillStyle = '#DEB887';
-    ctx.fillRect(x + (width - headSize) / 2, y - 10, headSize, headSize * 0.4);
-    
-    // 顔の詳細
-    ctx.fillStyle = '#000';
-    // 目
-    const eyeSize = 3;
-    ctx.fillRect(x + width * 0.3, y - 5, eyeSize, eyeSize);
-    ctx.fillRect(x + width * 0.6, y - 5, eyeSize, eyeSize);
-    
-    // 口（笑顔）
-    ctx.fillStyle = '#FF0000';
-    ctx.fillRect(x + width * 0.4, y + 5, width * 0.2, 2);
-    
-    // 腕のアニメーション
-    const armOffset = Math.sin(animationFrame * 0.3) * 8;
-    ctx.fillStyle = '#FFB6C1';
-    // 左腕
-    ctx.fillRect(x - 5, y + 25 + armOffset, 8, 20);
-    // 右腕
-    ctx.fillRect(x + width - 3, y + 25 - armOffset, 8, 20);
-    
-    // 足のアニメーション
-    const legOffset = Math.sin(animationFrame * 0.4) * 6;
-    ctx.fillStyle = '#FFB6C1';
-    // 左足
-    ctx.fillRect(x + 8, y + height - 10 + legOffset, 12, 15);
-    // 右足
-    ctx.fillRect(x + width - 20, y + height - 10 - legOffset, 12, 15);
-    
-    // 靴
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(x + 5, y + height + 2 + legOffset, 15, 6);
-    ctx.fillRect(x + width - 20, y + height + 2 - legOffset, 15, 6);
-  };
-
-  // 障害物の描画
-  const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) => {
-    const { x, y, width, height, color } = obstacle;
-    
-    // 影
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(x + 5, GROUND_Y + 55, width - 10, 8);
-    
-    // 障害物本体
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width, height);
-    
-    // ハイライト効果
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.fillRect(x + 2, y + 2, width - 4, height / 3);
-  };
-
-  // 背景の描画
-  const drawBackground = (ctx: CanvasRenderingContext2D) => {
-    // 空のグラデーション
-    const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    gradient.addColorStop(0, '#87CEEB'); // 空色
-    gradient.addColorStop(0.7, '#FFE4E1'); // 薄いピンク
-    gradient.addColorStop(1, '#90EE90'); // 薄い緑
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    
-    // 雲
-    ctx.fillStyle = '#FFFFFF';
-    for (let i = 0; i < 5; i++) {
-      const cloudX = (i * 200 + 50) % (CANVAS_WIDTH + 100);
-      const cloudY = 50 + Math.sin(i) * 20;
-      
-      ctx.beginPath();
-      ctx.arc(cloudX, cloudY, 15, 0, Math.PI * 2);
-      ctx.arc(cloudX + 20, cloudY, 20, 0, Math.PI * 2);
-      ctx.arc(cloudX + 40, cloudY, 15, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // 地面
-    ctx.fillStyle = '#90EE90';
-    ctx.fillRect(0, GROUND_Y + 60, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y - 60);
-    
-    // 草
-    ctx.fillStyle = '#32CD32';
-    for (let i = 0; i < CANVAS_WIDTH; i += 15) {
-      const grassHeight = 8 + Math.sin(i * 0.1) * 3;
-      ctx.fillRect(i, GROUND_Y + 55, 2, grassHeight);
-    }
-  };
-
-  // UI要素の描画
-  const drawUI = useCallback((ctx: CanvasRenderingContext2D) => {
-    // スコア表示
-    ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.font = 'bold 24px Arial';
-    ctx.strokeText(`スコア: ${gameState.score}`, 20, 40);
-    ctx.fillText(`スコア: ${gameState.score}`, 20, 40);
-    
-    // 操作説明
-    ctx.font = '16px Arial';
-    ctx.fillStyle = '#333333';
-    ctx.fillText('←→: 移動  スペース: ジャンプ', 20, CANVAS_HEIGHT - 20);
-    
-    // ゲームオーバー画面
-    if (gameState.gameOver) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      
-      ctx.fillStyle = '#FFFFFF';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3;
-      ctx.font = 'bold 48px Arial';
-      ctx.textAlign = 'center';
-      ctx.strokeText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-      ctx.fillText('ゲームオーバー', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-      
-      ctx.font = 'bold 24px Arial';
-      ctx.strokeText(`最終スコア: ${gameState.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
-      ctx.fillText(`最終スコア: ${gameState.score}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
-      
-      ctx.font = '20px Arial';
-      ctx.strokeText('Rキーでリスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60);
-      ctx.fillText('Rキーでリスタート', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60);
-      
-      ctx.textAlign = 'left';
-    }
-    
-    // スタート画面
-    if (!gameState.gameStarted && !gameState.gameOver) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      
-      ctx.fillStyle = '#FFFFFF';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3;
-      ctx.font = 'bold 36px Arial';
-      ctx.textAlign = 'center';
-      ctx.strokeText('Wind Runner', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-      ctx.fillText('Wind Runner', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
-      
-      ctx.font = '20px Arial';
-      ctx.strokeText('スペースキーでゲーム開始', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
-      ctx.fillText('スペースキーでゲーム開始', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
-      
-      ctx.textAlign = 'left';
-    }
-  }, [gameState]);
-
-  // キャラクターの更新
-  const updateCharacter = (char: Character): Character => {
-    const newChar = { ...char };
-    
-    // 横移動の処理
-    if (keysPressed.current.has('ArrowLeft')) {
-      newChar.velocityX = -PLAYER_SPEED;
-    } else if (keysPressed.current.has('ArrowRight')) {
-      newChar.velocityX = PLAYER_SPEED;
-    } else {
-      newChar.velocityX = 0;
-    }
-    
-    // 重力の適用
-    if (!newChar.isOnGround) {
-      newChar.velocityY += GRAVITY;
-    }
-    
-    // 位置の更新
-    newChar.x += newChar.velocityX;
-    newChar.y += newChar.velocityY;
-    
-    // 地面との衝突判定
-    if (newChar.y >= GROUND_Y) {
-      newChar.y = GROUND_Y;
-      newChar.velocityY = 0;
-      newChar.isJumping = false;
-      newChar.isOnGround = true;
-    } else {
-      newChar.isOnGround = false;
-    }
-    
-    // 画面端の制限
-    if (newChar.x < 0) {
-      newChar.x = 0;
-    } else if (newChar.x + newChar.width > CANVAS_WIDTH) {
-      newChar.x = CANVAS_WIDTH - newChar.width;
-    }
-    
-    // アニメーション更新
-    if (Math.abs(newChar.velocityX) > 0 || !newChar.isOnGround) {
-      newChar.animationTimer += 1;
-      if (newChar.animationTimer >= 3) {
-        newChar.animationFrame += 1;
-        newChar.animationTimer = 0;
-      }
-    }
-    
-    return newChar;
-  };
-
-  // 障害物の更新
-  const updateObstacles = (obstacles: Obstacle[]): Obstacle[] => {
-    return obstacles
-      .map(obstacle => ({
-        ...obstacle,
-        x: obstacle.x - OBSTACLE_SPEED
-      }))
-      .filter(obstacle => obstacle.x + obstacle.width > 0);
-  };
-
-  // 新しい障害物の生成
-  const spawnObstacle = (): Obstacle => {
-    const colors = ['#FF4444', '#44FF44', '#4444FF', '#FFFF44', '#FF44FF'];
-    const heights = [40, 60, 80];
-    const height = heights[Math.floor(Math.random() * heights.length)];
-    
-    return {
-      x: CANVAS_WIDTH,
-      y: GROUND_Y + 60 - height,
-      width: 30,
-      height: height,
-      color: colors[Math.floor(Math.random() * colors.length)]
-    };
-  };
-
-  // 衝突判定
-  const checkCollision = (char: Character, obstacle: Obstacle): boolean => {
-    return (
-      char.x < obstacle.x + obstacle.width &&
-      char.x + char.width > obstacle.x &&
-      char.y < obstacle.y + obstacle.height &&
-      char.y + char.height > obstacle.y
-    );
-  };
-
-  // ジャンプ処理
-  const handleJump = useCallback(() => {
-    if (gameState.gameOver) return;
-    
-    if (!gameState.gameStarted) {
-      setGameState(prev => ({ ...prev, gameStarted: true }));
-      return;
-    }
-    
-    setCharacter(prev => {
-      if (prev.isOnGround) {
-        return {
-          ...prev,
-          velocityY: JUMP_FORCE,
-          isJumping: true,
-          isOnGround: false
-        };
-      }
-      return prev;
-    });
-  }, [gameState.gameOver, gameState.gameStarted, JUMP_FORCE]);
-
-  // ゲームリスタート
-  const restartGame = useCallback(() => {
-    setCharacter({
-      x: 100,
-      y: 300,
-      width: 40,
-      height: 60,
-      velocityX: 0,
-      velocityY: 0,
-      isJumping: false,
-      isOnGround: true,
-      animationFrame: 0,
-      animationTimer: 0
-    });
-    setObstacles([]);
-    setGameState({
-      score: 0,
-      gameOver: false,
-      gameStarted: false
-    });
-  }, []);
-
-  // メインゲームループ
-  const gameLoop = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // 画面クリア
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    
-    // 背景描画
-    drawBackground(ctx);
-    
-    if (gameState.gameStarted && !gameState.gameOver) {
-      // キャラクター更新
-      setCharacter(prevChar => {
-        const updatedChar = updateCharacter(prevChar);
-        
-        // 障害物との衝突判定
-        obstacles.forEach(obstacle => {
-          if (checkCollision(updatedChar, obstacle)) {
-            setGameState(prev => ({ ...prev, gameOver: true }));
-          }
-        });
-        
-        return updatedChar;
-      });
-      
-      // 障害物更新
-      setObstacles(prevObstacles => {
-        let newObstacles = updateObstacles(prevObstacles);
-        
-        // 新しい障害物の生成
-        if (Math.random() < 0.02) {
-          newObstacles = [...newObstacles, spawnObstacle()];
-        }
-        
-        return newObstacles;
-      });
-      
-      // スコア更新
-      setGameState(prev => ({
-        ...prev,
-        score: prev.score + 1
-      }));
-    }
-    
-    // 障害物描画
-    obstacles.forEach(obstacle => {
-      drawObstacle(ctx, obstacle);
-    });
-    
-    // キャラクター描画
-    drawCharacter(ctx, character);
-    
-    // UI描画
-    drawUI(ctx);
-    
-    gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [character, obstacles, gameState, drawUI]);
-
-  // キーボードイベント処理
+  // キー入力処理（修正版）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      keysPressed.current.add(e.code);
-      
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         e.preventDefault();
-        handleJump();
-      }
-      
-      if (e.code === 'KeyR' && gameState.gameOver) {
-        restartGame();
+        keysRef.current[e.code] = true;
       }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
-      keysPressed.current.delete(e.code);
+      if (e.code === 'Space' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        e.preventDefault();
+        keysRef.current[e.code] = false;
+      }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     
@@ -447,47 +73,351 @@ export default function GamePage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleJump, restartGame, gameState.gameOver]);
+  }, []);
 
-  // ゲーム初期化
-  useEffect(() => {
+  // キャラクター描画
+  const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) => {
+    // 体
+    ctx.fillStyle = '#FFB6C1';
+    ctx.fillRect(char.x, char.y, char.width, char.height);
+    
+    // 顔
+    ctx.fillStyle = '#FFB6C1';
+    ctx.fillRect(char.x + 5, char.y - 15, 30, 20);
+    
+    // 目
+    ctx.fillStyle = '#000';
+    ctx.fillRect(char.x + 10, char.y - 10, 5, 5);
+    ctx.fillRect(char.x + 20, char.y - 10, 5, 5);
+    
+    // 髪
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(char.x + 3, char.y - 20, 34, 10);
+    
+    // 服
+    ctx.fillStyle = '#4169E1';
+    ctx.fillRect(char.x + 5, char.y + 15, 30, 25);
+    
+    // 腕
+    ctx.fillStyle = '#FFB6C1';
+    ctx.fillRect(char.x - 5, char.y + 15, 8, 20);
+    ctx.fillRect(char.x + 37, char.y + 15, 8, 20);
+    
+    // 足
+    ctx.fillStyle = '#654321';
+    ctx.fillRect(char.x + 8, char.y + 40, 8, 20);
+    ctx.fillRect(char.x + 24, char.y + 40, 8, 20);
+  };
+
+  // 障害物描画
+  const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) => {
+    if (obstacle.type === 'cactus') {
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      
+      // サボテンの刺
+      ctx.strokeStyle = '#006400';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(obstacle.x - 3, obstacle.y + i * 15 + 10);
+        ctx.lineTo(obstacle.x + 3, obstacle.y + i * 15 + 10);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(obstacle.x + obstacle.width - 3, obstacle.y + i * 15 + 10);
+        ctx.lineTo(obstacle.x + obstacle.width + 3, obstacle.y + i * 15 + 10);
+        ctx.stroke();
+      }
+    } else {
+      // 鳥
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.ellipse(obstacle.x + 15, obstacle.y + 10, 15, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 翼
+      ctx.strokeStyle = '#654321';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(obstacle.x, obstacle.y + 5);
+      ctx.lineTo(obstacle.x + 10, obstacle.y - 5);
+      ctx.moveTo(obstacle.x + 30, obstacle.y + 5);
+      ctx.lineTo(obstacle.x + 20, obstacle.y - 5);
+      ctx.stroke();
+    }
+  };
+
+  // アイテム描画
+  const drawCollectible = (ctx: CanvasRenderingContext2D, collectible: Collectible) => {
+    if (!collectible.collected) {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(collectible.x + 10, collectible.y + 10, 10, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 星の形
+      ctx.fillStyle = '#FFF';
+      ctx.font = '16px Arial';
+      ctx.fillText('★', collectible.x + 3, collectible.y + 16);
+    }
+  };
+
+  // 背景描画
+  const drawBackground = (ctx: CanvasRenderingContext2D) => {
+    // 空のグラデーション
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, '#87CEEB');
+    gradient.addColorStop(1, '#98FB98');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 800, 400);
+    
+    // 雲
+    ctx.fillStyle = '#FFF';
+    for (let i = 0; i < 3; i++) {
+      const x = (i * 300 + (score * 0.5) % 900) % 900 - 100;
+      ctx.beginPath();
+      ctx.arc(x, 80 + i * 30, 30, 0, Math.PI * 2);
+      ctx.arc(x + 25, 80 + i * 30, 20, 0, Math.PI * 2);
+      ctx.arc(x + 45, 80 + i * 30, 25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // 地面
+    ctx.fillStyle = '#90EE90';
+    ctx.fillRect(0, 380, 800, 20);
+    
+    // 草
+    ctx.fillStyle = '#228B22';
+    for (let i = 0; i < 40; i++) {
+      const x = (i * 20 + (score * gameSpeed) % 800) % 800;
+      ctx.fillRect(x, 375, 3, 8);
+    }
+  };
+
+  // 衝突判定
+  const checkCollision = (rect1: any, rect2: any) => {
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+  };
+
+  // ゲームループ（修正版）
+  const gameLoop = useCallback(() => {
+    if (!gameStarted || gameOver) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // キャラクター更新（修正版）
+    setCharacter(prev => {
+      const newChar = { ...prev };
+      
+      // ジャンプ
+      if (keysRef.current['Space'] && !newChar.isJumping) {
+        newChar.velocityY = -15;
+        newChar.isJumping = true;
+      }
+      
+      // 左右移動（修正版 - スムーズな移動）
+      const moveSpeed = 3;
+      if (keysRef.current['ArrowLeft']) {
+        newChar.x = Math.max(0, newChar.x - moveSpeed);
+      }
+      if (keysRef.current['ArrowRight']) {
+        newChar.x = Math.min(760 - newChar.width, newChar.x + moveSpeed);
+      }
+      
+      // 重力
+      if (newChar.isJumping) {
+        newChar.y += newChar.velocityY;
+        newChar.velocityY += 0.8;
+        
+        if (newChar.y >= 300) {
+          newChar.y = 300;
+          newChar.isJumping = false;
+          newChar.velocityY = 0;
+        }
+      }
+      
+      newChar.animationFrame += 1;
+      return newChar;
+    });
+
+    // 障害物生成と更新
+    setObstacles(prev => {
+      let newObstacles = [...prev];
+      
+      if (Math.random() < 0.015) {
+        const type = Math.random() < 0.7 ? 'cactus' : 'bird';
+        newObstacles.push({
+          x: 800,
+          y: type === 'cactus' ? 330 : 250,
+          width: type === 'cactus' ? 20 : 30,
+          height: type === 'cactus' ? 50 : 20,
+          type: type
+        });
+      }
+      
+      // 障害物移動
+      newObstacles = newObstacles.map(obs => ({
+        ...obs,
+        x: obs.x - gameSpeed
+      })).filter(obs => obs.x > -50);
+      
+      return newObstacles;
+    });
+
+    // アイテム生成と更新
+    setCollectibles(prev => {
+      let newCollectibles = [...prev];
+      
+      if (Math.random() < 0.008) {
+        newCollectibles.push({
+          x: 800,
+          y: 200 + Math.random() * 100,
+          width: 20,
+          height: 20,
+          collected: false
+        });
+      }
+      
+      // アイテム移動
+      newCollectibles = newCollectibles.map(item => ({
+        ...item,
+        x: item.x - gameSpeed
+      })).filter(item => item.x > -30);
+      
+      return newCollectibles;
+    });
+
+    // 衝突判定
+    obstacles.forEach(obstacle => {
+      if (checkCollision(character, obstacle)) {
+        setGameOver(true);
+      }
+    });
+
+    // アイテム収集判定
+    setCollectibles(prev => 
+      prev.map(item => {
+        if (!item.collected && checkCollision(character, item)) {
+          setScore(s => s + 50);
+          return { ...item, collected: true };
+        }
+        return item;
+      })
+    );
+
+    // スコア更新
+    setScore(prev => prev + 1);
     
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
-    
+    // ゲーム速度調整
+    setGameSpeed(prev => Math.min(prev + 0.002, 5));
+
+    // 描画
+    ctx.clearRect(0, 0, 800, 400);
+    drawBackground(ctx);
+    drawCharacter(ctx, character);
+    obstacles.forEach(obs => drawObstacle(ctx, obs));
+    collectibles.forEach(item => drawCollectible(ctx, item));
+
+    // 次のフレーム
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-    
+  }, [gameStarted, gameOver, character, obstacles, collectibles, gameSpeed, score]);
+
+  // ゲームループ開始
+  useEffect(() => {
+    if (gameStarted && !gameOver) {
+      gameLoopRef.current = requestAnimationFrame(gameLoop);
+    }
     return () => {
       if (gameLoopRef.current) {
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop]);
+  }, [gameLoop, gameStarted, gameOver]);
+
+  const startGame = () => {
+    setGameStarted(true);
+    setGameOver(false);
+    setScore(0);
+    setGameSpeed(2);
+    setObstacles([]);
+    setCollectibles([]);
+    setCharacter({
+      x: 100,
+      y: 300,
+      width: 40,
+      height: 60,
+      velocityY: 0,
+      isJumping: false,
+      animationFrame: 0,
+    });
+    keysRef.current = {};
+  };
+
+  const restartGame = () => {
+    startGame();
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-yellow-200 to-pink-200 p-4">
-      <div className="bg-white rounded-lg shadow-2xl p-6 mb-4">
-        <h1 className="text-3xl font-bold text-center mb-4 text-purple-600">
-          Wind Runner - 障害物回避ゲーム
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-400 to-pink-400 p-4">
+      <div className="bg-white rounded-lg shadow-2xl p-6 max-w-4xl w-full">
+        <h1 className="text-4xl font-bold text-center text-purple-600 mb-4">
+          🏃‍♂️ Wind Runner Game 🏃‍♂️
         </h1>
+        
+        <div className="flex justify-between items-center mb-4">
+          <div className="text-xl font-bold">
+            スコア: <span className="text-blue-600">{score}</span>
+          </div>
+          <div className="text-lg">
+            速度: <span className="text-green-600">{gameSpeed.toFixed(1)}</span>
+          </div>
+        </div>
+
         <canvas
           ref={canvasRef}
-          className="border-4 border-purple-400 rounded-lg bg-sky-100"
+          width={800}
+          height={400}
+          className="border-4 border-gray-300 rounded-lg bg-blue-100 mx-auto block"
         />
+
         <div className="mt-4 text-center">
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
+          {!gameStarted && !gameOver && (
             <div>
-              <p className="font-semibold">操作方法:</p>
-              <p>← →: 左右移動</p>
-              <p>スペース: ジャンプ</p>
+              <button
+                onClick={startGame}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-xl mr-4"
+              >
+                🎮 ゲームスタート
+              </button>
             </div>
-            <div>
-              <p className="font-semibold">ゲーム:</p>
-              <p>障害物を避けよう!</p>
-              <p>R: リスタート</p>
+          )}
+
+          {gameOver && (
+            <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4 mb-4">
+              <h2 className="text-2xl font-bold text-red-600 mb-2">ゲームオーバー!</h2>
+              <p className="text-lg mb-4">最終スコア: {score}</p>
+              <button
+                onClick={restartGame}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                🔄 もう一度プレイ
+              </button>
             </div>
+          )}
+
+          <div className="text-sm text-gray-600 mt-4">
+            <p><strong>操作方法:</strong></p>
+            <p>🚀 スペースキー: ジャンプ</p>
+            <p>⬅️➡️ 矢印キー: 左右移動</p>
+            <p>⭐ 黄色い星を集めてスコアアップ!</p>
+            <p>🌵🐦 サボテンと鳥を避けよう!</p>
           </div>
         </div>
       </div>
