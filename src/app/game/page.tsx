@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 interface Character {
   x: number;
@@ -33,7 +33,6 @@ export default function GamePage() {
   const gameLoopRef = useRef<number | null>(null);
   const keysRef = useRef<{ [key: string]: boolean }>({});
   
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [character, setCharacter] = useState<Character>({
     x: 100,
     y: 300,
@@ -44,16 +43,14 @@ export default function GamePage() {
     animationFrame: 0,
   });
   
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [obstacles, setObstacles] = useState<Obstacle[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [collectibles, setCollectibles] = useState<Collectible[]>([]);
   const [score, setScore] = useState(0);
   const [gameSpeed, setGameSpeed] = useState(2);
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
 
-  // キー入力処理（修正版）
+  // キー入力処理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
@@ -167,7 +164,7 @@ export default function GamePage() {
   };
 
   // 背景描画
-  const drawBackground = useCallback((ctx: CanvasRenderingContext2D) => {
+  const drawBackground = (ctx: CanvasRenderingContext2D) => {
     // 空のグラデーション
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, '#87CEEB');
@@ -196,193 +193,157 @@ export default function GamePage() {
       const x = (i * 20 + (score * gameSpeed) % 800) % 800;
       ctx.fillRect(x, 375, 3, 8);
     }
-  }, [score, gameSpeed]);
+  };
 
-  // 衝突判定（AABB - Axis-Aligned Bounding Box）
-  interface Rectangle {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }
-  
-  const checkCollision = useCallback((rect1: Rectangle, rect2: Rectangle): boolean => {
-    // 2つの矩形が重なっているかをチェック
-    // 左端が相手の右端より左にあり、かつ右端が相手の左端より右にある
-    const horizontalOverlap = rect1.x < rect2.x + rect2.width && 
-                             rect1.x + rect1.width > rect2.x;
-    
-    // 上端が相手の下端より上にあり、かつ下端が相手の上端より下にある
-    const verticalOverlap = rect1.y < rect2.y + rect2.height && 
-                           rect1.y + rect1.height > rect2.y;
-    
-    // 水平方向と垂直方向の両方で重なっている場合のみ衝突
-    return horizontalOverlap && verticalOverlap;
-  }, []);
+  // 衝突判定
+  const checkCollision = (rect1: Character | Collectible, rect2: Obstacle | Collectible) => {
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+  };
 
-  // ゲームループ（修正版）
-  const gameLoop = useCallback(() => {
-    if (!gameStarted || gameOver) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // キャラクター更新（修正版）
-    setCharacter(prev => {
-      const newChar = { ...prev };
-      
-      // ジャンプ
-      if (keysRef.current['Space'] && !newChar.isJumping) {
-        newChar.velocityY = -15;
-        newChar.isJumping = true;
-      }
-      
-      // 左右移動（修正版 - スムーズな移動）
-      const moveSpeed = 3;
-      if (keysRef.current['ArrowLeft']) {
-        newChar.x = Math.max(0, newChar.x - moveSpeed);
-      }
-      if (keysRef.current['ArrowRight']) {
-        newChar.x = Math.min(760 - newChar.width, newChar.x + moveSpeed);
-      }
-      
-      // 重力
-      if (newChar.isJumping) {
-        newChar.y += newChar.velocityY;
-        newChar.velocityY += 0.8;
-        
-        if (newChar.y >= 300) {
-          newChar.y = 300;
-          newChar.isJumping = false;
-          newChar.velocityY = 0;
-        }
-      }
-      
-      newChar.animationFrame += 1;
-      return newChar;
-    });
-
-    // 障害物生成と更新
-    setObstacles(prev => {
-      let newObstacles = [...prev];
-      
-      if (Math.random() < 0.015) {
-        const type = Math.random() < 0.7 ? 'cactus' : 'bird';
-        newObstacles.push({
-          x: 800,
-          y: type === 'cactus' ? 330 : 250,
-          width: type === 'cactus' ? 20 : 30,
-          height: type === 'cactus' ? 50 : 20,
-          type: type
-        });
-      }
-      
-      // 障害物移動
-      newObstacles = newObstacles.map(obs => ({
-        ...obs,
-        x: obs.x - gameSpeed
-      })).filter(obs => obs.x > -50);
-      
-      return newObstacles;
-    });
-
-    // アイテム生成と更新
-    setCollectibles(prev => {
-      let newCollectibles = [...prev];
-      
-      if (Math.random() < 0.008) {
-        newCollectibles.push({
-          x: 800,
-          y: 200 + Math.random() * 100,
-          width: 20,
-          height: 20,
-          collected: false
-        });
-      }
-      
-      // アイテム移動
-      newCollectibles = newCollectibles.map(item => ({
-        ...item,
-        x: item.x - gameSpeed
-      })).filter(item => item.x > -30);
-      
-      return newCollectibles;
-    });
-
-    // 衝突判定
-    setObstacles(currentObstacles => {
-      setCharacter(currentCharacter => {
-        currentObstacles.forEach(obstacle => {
-          if (checkCollision(currentCharacter, obstacle)) {
-            setGameOver(true);
-          }
-        });
-        return currentCharacter;
-      });
-      return currentObstacles;
-    });
-
-    // アイテム収集判定
-    setCollectibles(prev => {
-      setCharacter(currentCharacter => {
-        return currentCharacter;
-      });
-      
-      return prev.map(item => {
-        setCharacter(currentCharacter => {
-          if (!item.collected && checkCollision(currentCharacter, item)) {
-            setScore(s => s + 50);
-            item.collected = true;
-          }
-          return currentCharacter;
-        });
-        return item;
-      });
-    });
-
-    // スコア更新
-    setScore(prev => prev + 1);
-    
-    // ゲーム速度調整
-    setGameSpeed(prev => Math.min(prev + 0.002, 5));
-
-    // 描画（最新のstateを取得して描画）
-    ctx.clearRect(0, 0, 800, 400);
-    drawBackground(ctx);
-    
-    // 最新のstateを取得して描画
-    setCharacter(currentCharacter => {
-      drawCharacter(ctx, currentCharacter);
-      return currentCharacter;
-    });
-    
-    setObstacles(currentObstacles => {
-      currentObstacles.forEach(obs => drawObstacle(ctx, obs));
-      return currentObstacles;
-    });
-    
-    setCollectibles(currentCollectibles => {
-      currentCollectibles.forEach(item => drawCollectible(ctx, item));
-      return currentCollectibles;
-    });
-
-    // 次のフレーム
-    gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [gameStarted, gameOver, drawBackground, gameSpeed, checkCollision]);
-
-  // ゲームループ開始
+  // ゲームループ
   useEffect(() => {
+    const gameLoop = () => {
+      if (!gameStarted || gameOver) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // キャラクター更新
+      setCharacter(prev => {
+        const newChar = { ...prev };
+        
+        // ジャンプ
+        if (keysRef.current['Space'] && !newChar.isJumping) {
+          newChar.velocityY = -15;
+          newChar.isJumping = true;
+        }
+        
+        // 左右移動
+        const moveSpeed = 3;
+        if (keysRef.current['ArrowLeft']) {
+          newChar.x = Math.max(0, newChar.x - moveSpeed);
+        }
+        if (keysRef.current['ArrowRight']) {
+          newChar.x = Math.min(760 - newChar.width, newChar.x + moveSpeed);
+        }
+        
+        // 重力
+        if (newChar.isJumping) {
+          newChar.y += newChar.velocityY;
+          newChar.velocityY += 0.8;
+          
+          if (newChar.y >= 300) {
+            newChar.y = 300;
+            newChar.isJumping = false;
+            newChar.velocityY = 0;
+          }
+        }
+        
+        newChar.animationFrame += 1;
+        return newChar;
+      });
+
+      // 障害物生成と更新
+      setObstacles(prev => {
+        let newObstacles = [...prev];
+        
+        if (Math.random() < 0.015) {
+          const type = Math.random() < 0.7 ? 'cactus' : 'bird';
+          newObstacles.push({
+            x: 800,
+            y: type === 'cactus' ? 330 : 250,
+            width: type === 'cactus' ? 20 : 30,
+            height: type === 'cactus' ? 50 : 20,
+            type: type
+          });
+        }
+        
+        // 障害物移動
+        newObstacles = newObstacles.map(obs => ({
+          ...obs,
+          x: obs.x - gameSpeed
+        })).filter(obs => obs.x > -50);
+        
+        return newObstacles;
+      });
+
+      // アイテム生成と更新
+      setCollectibles(prev => {
+        let newCollectibles = [...prev];
+        
+        if (Math.random() < 0.008) {
+          newCollectibles.push({
+            x: 800,
+            y: 200 + Math.random() * 100,
+            width: 20,
+            height: 20,
+            collected: false
+          });
+        }
+        
+        // アイテム移動
+        newCollectibles = newCollectibles.map(item => ({
+          ...item,
+          x: item.x - gameSpeed
+        })).filter(item => item.x > -30);
+        
+        return newCollectibles;
+      });
+
+      // スコア更新
+      setScore(prev => prev + 1);
+      
+      // ゲーム速度調整
+      setGameSpeed(prev => Math.min(prev + 0.002, 5));
+
+      // 描画
+      ctx.clearRect(0, 0, 800, 400);
+      drawBackground(ctx);
+      drawCharacter(ctx, character);
+      obstacles.forEach(obs => drawObstacle(ctx, obs));
+      collectibles.forEach(item => drawCollectible(ctx, item));
+
+      // 次のフレーム
+      gameLoopRef.current = requestAnimationFrame(gameLoop);
+    };
+
     if (gameStarted && !gameOver) {
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     }
+
     return () => {
       if (gameLoopRef.current) {
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameLoop, gameStarted, gameOver]);
+  }, [gameStarted, gameOver, gameSpeed, score, obstacles, collectibles, character]);
+
+  // 衝突判定
+  useEffect(() => {
+    if (!gameStarted || gameOver) return;
+    
+    obstacles.forEach(obstacle => {
+      if (checkCollision(character, obstacle)) {
+        setGameOver(true);
+      }
+    });
+
+    // アイテム収集判定
+    setCollectibles(prev => 
+      prev.map(item => {
+        if (!item.collected && checkCollision(character, item)) {
+          setScore(s => s + 50);
+          return { ...item, collected: true };
+        }
+        return item;
+      })
+    );
+  }, [character, obstacles, collectibles, gameStarted, gameOver]);
 
   const startGame = () => {
     setGameStarted(true);
