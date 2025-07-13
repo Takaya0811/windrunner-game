@@ -252,8 +252,11 @@ export default function GamePage() {
       setObstacles(prev => {
         let newObstacles = [...prev];
         
-        if (Math.random() < 0.015) {
-          const type = Math.random() < 0.7 ? 'cactus' : 'bird';
+     // 最後の障害物との距離をチェック
+     const lastObstacle = newObstacles[newObstacles.length - 1];
+     const minDistance = 280; // 最小280ピクセル間隔
+        if (Math.random() < 0.012 && (!lastObstacle || (800 - lastObstacle.x) > minDistance)) {
+          const type = Math.random() < 0.6? 'cactus' : 'bird';
           newObstacles.push({
             x: 800,
             y: type === 'cactus' ? 330 : 250,
