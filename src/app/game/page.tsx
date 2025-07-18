@@ -1,32 +1,10 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-
-interface Character {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  velocityY: number;
-  isJumping: boolean;
-  animationFrame: number;
-}
-
-interface Obstacle {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  type: 'cactus' | 'bird';
-}
-
-interface Collectible {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  collected: boolean;
-}
+import { Character, Obstacle, Collectible } from '@/types/game';
+import { GAME_CONFIG } from '@/utils/constants';
+import { drawCharacter, drawObstacle, drawCollectible, drawBackground } from '@/utils/drawing';
+import { checkCharacterObstacleCollision, checkCharacterCollectibleCollision } from '@/utils/collision';
 
 export default function GamePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,10 +12,10 @@ export default function GamePage() {
   const keysRef = useRef<{ [key: string]: boolean }>({});
   
   const [character, setCharacter] = useState<Character>({
-    x: 100,
-    y: 300,
-    width: 40,
-    height: 60,
+    x: GAME_CONFIG.PLAYER_START_X,
+    y: GAME_CONFIG.PLAYER_START_Y,
+    width: GAME_CONFIG.PLAYER_WIDTH,
+    height: GAME_CONFIG.PLAYER_HEIGHT,
     velocityY: 0,
     isJumping: false,
     animationFrame: 0,
@@ -46,7 +24,7 @@ export default function GamePage() {
   const [obstacles, setObstacles] = useState<Obstacle[]>([]);
   const [collectibles, setCollectibles] = useState<Collectible[]>([]);
   const [score, setScore] = useState(0);
-  const [gameSpeed, setGameSpeed] = useState(2);
+  const [gameSpeed, setGameSpeed] = useState(GAME_CONFIG.INITIAL_GAME_SPEED);
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
 
@@ -73,135 +51,12 @@ export default function GamePage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [])
 
-  // キャラクター描画
-  const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) => {
-    // 体
-    ctx.fillStyle = '#FFB6C1';
-    ctx.fillRect(char.x, char.y, char.width, char.height);
-    
-    // 顔
-    ctx.fillStyle = '#FFB6C1';
-    ctx.fillRect(char.x + 5, char.y - 15, 30, 20);
-    
-    // 目
-    ctx.fillStyle = '#000';
-    ctx.fillRect(char.x + 10, char.y - 10, 5, 5);
-    ctx.fillRect(char.x + 20, char.y - 10, 5, 5);
-    
-    // 髪
-    ctx.fillStyle = '#8B4513';
-    ctx.fillRect(char.x + 3, char.y - 20, 34, 10);
-    
-    // 服
-    ctx.fillStyle = '#4169E1';
-    ctx.fillRect(char.x + 5, char.y + 15, 30, 25);
-    
-    // 腕
-    ctx.fillStyle = '#FFB6C1';
-    ctx.fillRect(char.x - 5, char.y + 15, 8, 20);
-    ctx.fillRect(char.x + 37, char.y + 15, 8, 20);
-    
-    // 足
-    ctx.fillStyle = '#654321';
-    ctx.fillRect(char.x + 8, char.y + 40, 8, 20);
-    ctx.fillRect(char.x + 24, char.y + 40, 8, 20);
-  };
 
-  // 障害物描画
-  const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) => {
-    if (obstacle.type === 'cactus') {
-      ctx.fillStyle = '#228B22';
-      ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-      
-      // サボテンの刺
-      ctx.strokeStyle = '#006400';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(obstacle.x - 3, obstacle.y + i * 15 + 10);
-        ctx.lineTo(obstacle.x + 3, obstacle.y + i * 15 + 10);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(obstacle.x + obstacle.width - 3, obstacle.y + i * 15 + 10);
-        ctx.lineTo(obstacle.x + obstacle.width + 3, obstacle.y + i * 15 + 10);
-        ctx.stroke();
-      }
-    } else {
-      // 鳥
-      ctx.fillStyle = '#8B4513';
-      ctx.beginPath();
-      ctx.ellipse(obstacle.x + 15, obstacle.y + 10, 15, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // 翼
-      ctx.strokeStyle = '#654321';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(obstacle.x, obstacle.y + 5);
-      ctx.lineTo(obstacle.x + 10, obstacle.y - 5);
-      ctx.moveTo(obstacle.x + 30, obstacle.y + 5);
-      ctx.lineTo(obstacle.x + 20, obstacle.y - 5);
-      ctx.stroke();
-    }
-  };
 
-  // アイテム描画
-  const drawCollectible = (ctx: CanvasRenderingContext2D, collectible: Collectible) => {
-    if (!collectible.collected) {
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(collectible.x + 10, collectible.y + 10, 10, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // 星の形
-      ctx.fillStyle = '#FFF';
-      ctx.font = '16px Arial';
-      ctx.fillText('★', collectible.x + 3, collectible.y + 16);
-    }
-  };
 
-  // 背景描画
-  const drawBackground = (ctx: CanvasRenderingContext2D) => {
-    // 空のグラデーション
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, '#87CEEB');
-    gradient.addColorStop(1, '#98FB98');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 800, 400);
-    
-    // 雲
-    ctx.fillStyle = '#FFF';
-    for (let i = 0; i < 3; i++) {
-      const x = (i * 300 + (score * 0.5) % 900) % 900 - 100;
-      ctx.beginPath();
-      ctx.arc(x, 80 + i * 30, 30, 0, Math.PI * 2);
-      ctx.arc(x + 25, 80 + i * 30, 20, 0, Math.PI * 2);
-      ctx.arc(x + 45, 80 + i * 30, 25, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // 地面
-    ctx.fillStyle = '#90EE90';
-    ctx.fillRect(0, 380, 800, 20);
-    
-    // 草
-    ctx.fillStyle = '#228B22';
-    for (let i = 0; i < 40; i++) {
-      const x = (i * 20 + (score * gameSpeed) % 800) % 800;
-      ctx.fillRect(x, 375, 3, 8);
-    }
-  };
 
-  // 衝突判定
-  const checkCollision = (rect1: Character | Collectible, rect2: Obstacle | Collectible) => {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-  };
 
   // ゲームループ
   useEffect(() => {
@@ -302,11 +157,11 @@ export default function GamePage() {
       setScore(prev => prev + 1);
       
       // ゲーム速度調整
-      setGameSpeed(prev => Math.min(prev + 0.002, 5));
+      setGameSpeed(prev => Math.min(prev + GAME_CONFIG.SPEED_INCREASE, GAME_CONFIG.MAX_GAME_SPEED));
 
       // 描画
-      ctx.clearRect(0, 0, 800, 400);
-      drawBackground(ctx);
+      ctx.clearRect(0, 0, GAME_CONFIG.CANVAS_WIDTH, GAME_CONFIG.CANVAS_HEIGHT);
+      drawBackground(ctx, score, gameSpeed);
       drawCharacter(ctx, character);
       obstacles.forEach(obs => drawObstacle(ctx, obs));
       collectibles.forEach(item => drawCollectible(ctx, item));
@@ -331,7 +186,7 @@ export default function GamePage() {
     if (!gameStarted || gameOver) return;
     
     obstacles.forEach(obstacle => {
-      if (checkCollision(character, obstacle)) {
+      if (checkCharacterObstacleCollision(character, obstacle)) {
         setGameOver(true);
       }
     });
@@ -339,8 +194,8 @@ export default function GamePage() {
     // アイテム収集判定
     setCollectibles(prev => 
       prev.map(item => {
-        if (!item.collected && checkCollision(character, item)) {
-          setScore(s => s + 50);
+        if (!item.collected && checkCharacterCollectibleCollision(character, item)) {
+          setScore(s => s + GAME_CONFIG.COLLECTIBLE_SCORE);
           return { ...item, collected: true };
         }
         return item;
