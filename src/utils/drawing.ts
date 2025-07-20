@@ -9,21 +9,33 @@
  */
 
 import { Character, Obstacle, Collectible } from '@/types/game';
-import { GAME_CONFIG, COLORS } from '@/utils/constants';
+import { GAME_CONFIG, COLORS, ANIMATION, BUILDINGS, CLOUDS } from '@/utils/constants';
+import { CharacterAnimationCalculations, BackgroundScrollCalculations } from '@/utils/memoizedCalculations';
 
 /**
- * キャラクター（プレイヤー）を描画する関数
+ * キャラクター（プレイヤー）を描画する関数（最適化版）
  * @param ctx - 描画コンテキスト
  * @param char - キャラクターの情報
+ * @param animationCalcs - 事前計算されたアニメーション値（オプション）
  */
-export const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) => {
-  // アニメーション用の計算
-  // const runCycle = Math.floor(char.animationFrame / 8) % 4; // 4フレームサイクル（将来使用予定）
-  const bounce = char.isJumping ? 0 : Math.sin(char.animationFrame * 0.3) * 1.5;
+export const drawCharacter = (
+  ctx: CanvasRenderingContext2D, 
+  char: Character, 
+  animationCalcs?: CharacterAnimationCalculations
+) => {
+  // 事前計算された値を使用するか、従来の計算方法を使用
+  const animations = animationCalcs || {
+    bounce: char.isJumping ? 0 : Math.sin(char.animationFrame * ANIMATION.BOUNCE_SPEED) * ANIMATION.BOUNCE_AMPLITUDE,
+    eyeHeight: (char.animationFrame % ANIMATION.BLINK_INTERVAL) < ANIMATION.BLINK_DURATION ? 2 : 5,
+    hairOffset: char.isJumping ? -2 : Math.sin(char.animationFrame * ANIMATION.HAIR_WAVE_SPEED) * ANIMATION.HAIR_WAVE_AMPLITUDE,
+    armSwing: Math.sin(char.animationFrame * ANIMATION.ARM_SWING_SPEED) * ANIMATION.ARM_SWING_AMPLITUDE,
+    leftLegOffset: Math.sin(char.animationFrame * ANIMATION.LEG_SWING_SPEED) * ANIMATION.LEG_SWING_AMPLITUDE,
+    rightLegOffset: -Math.sin(char.animationFrame * ANIMATION.LEG_SWING_SPEED) * ANIMATION.LEG_SWING_AMPLITUDE,
+  };
   
   // 基本位置調整
   const baseX = char.x;
-  const baseY = char.y + bounce;
+  const baseY = char.y + animations.bounce;
   
   // 体（メイン）
   ctx.fillStyle = COLORS.SKIN_COLOR;
@@ -34,10 +46,9 @@ export const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) =>
   ctx.fillRect(baseX + 5, baseY - 15, 30, 20);
   
   // 目（まばたき効果）
-  const eyeHeight = (char.animationFrame % 120) < 5 ? 2 : 5; // まばたき
   ctx.fillStyle = COLORS.BLACK;
-  ctx.fillRect(baseX + 10, baseY - 10, 4, eyeHeight);
-  ctx.fillRect(baseX + 21, baseY - 10, 4, eyeHeight);
+  ctx.fillRect(baseX + 10, baseY - 10, 4, animations.eyeHeight);
+  ctx.fillRect(baseX + 21, baseY - 10, 4, animations.eyeHeight);
   
   // 目の輝き
   ctx.fillStyle = COLORS.WHITE;
@@ -46,8 +57,7 @@ export const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) =>
   
   // 髪（風になびく効果）
   ctx.fillStyle = COLORS.HAIR_COLOR;
-  const hairOffset = char.isJumping ? -2 : Math.sin(char.animationFrame * 0.1) * 1;
-  ctx.fillRect(baseX + 3 + hairOffset, baseY - 20, 34, 10);
+  ctx.fillRect(baseX + 3 + animations.hairOffset, baseY - 20, 34, 10);
   
   // 服（メイン）
   ctx.fillStyle = COLORS.SHIRT_COLOR;
@@ -66,9 +76,8 @@ export const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) =>
     ctx.fillRect(baseX + 37, baseY + 10, 8, 20);
   } else {
     // 走り中は腕を振る
-    const armSwing = Math.sin(char.animationFrame * 0.4) * 3;
-    ctx.fillRect(baseX - 5, baseY + 15 + armSwing, 8, 20);
-    ctx.fillRect(baseX + 37, baseY + 15 - armSwing, 8, 20);
+    ctx.fillRect(baseX - 5, baseY + 15 + animations.armSwing, 8, 20);
+    ctx.fillRect(baseX + 37, baseY + 15 - animations.armSwing, 8, 20);
   }
   
   // 足の動き（走りアニメーション）
@@ -79,16 +88,16 @@ export const drawCharacter = (ctx: CanvasRenderingContext2D, char: Character) =>
     ctx.fillRect(baseX + 24, baseY + 45, 8, 15);
   } else {
     // 走り中は足を交互に動かす
-    const leftLegY = baseY + 40 + Math.sin(char.animationFrame * 0.4) * 2;
-    const rightLegY = baseY + 40 - Math.sin(char.animationFrame * 0.4) * 2;
+    const leftLegY = baseY + 40 + animations.leftLegOffset;
+    const rightLegY = baseY + 40 + animations.rightLegOffset;
     ctx.fillRect(baseX + 8, leftLegY, 8, 20);
     ctx.fillRect(baseX + 24, rightLegY, 8, 20);
   }
   
   // 靴
   ctx.fillStyle = COLORS.SHOES_COLOR;
-  const leftShoeY = char.isJumping ? baseY + 58 : baseY + 58 + Math.sin(char.animationFrame * 0.4) * 2;
-  const rightShoeY = char.isJumping ? baseY + 58 : baseY + 58 - Math.sin(char.animationFrame * 0.4) * 2;
+  const leftShoeY = char.isJumping ? baseY + 58 : baseY + 58 + animations.leftLegOffset;
+  const rightShoeY = char.isJumping ? baseY + 58 : baseY + 58 + animations.rightLegOffset;
   ctx.fillRect(baseX + 6, leftShoeY, 12, 4);
   ctx.fillRect(baseX + 22, rightShoeY, 12, 4);
   
@@ -175,12 +184,32 @@ export const drawCollectible = (ctx: CanvasRenderingContext2D, collectible: Coll
 };
 
 /**
- * 背景を描画する関数
+ * 背景を描画する関数（最適化版）
  * @param ctx - 描画コンテキスト
  * @param score - 現在のスコア（スクロール計算用）
  * @param gameSpeed - ゲーム速度（スクロール計算用）
+ * @param backgroundCalcs - 事前計算された背景スクロール値（オプション）
  */
-export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gameSpeed: number) => {
+export const drawBackground = (
+  ctx: CanvasRenderingContext2D, 
+  score: number, 
+  gameSpeed: number,
+  backgroundCalcs?: BackgroundScrollCalculations
+) => {
+  // 事前計算された値を使用するか、従来の計算方法を使用
+  const background = backgroundCalcs || {
+    buildingOffset: (score * BUILDINGS.SCROLL_SPEED) % 1000,
+    windmillRotation: (score * BUILDINGS.WINDMILL_ROTATION_SPEED) % (Math.PI * 2),
+    cloudPositions: Array.from({ length: CLOUDS.COUNT }, (_, i) => ({
+      x: (i * CLOUDS.SPACING + (score * CLOUDS.SCROLL_SPEED) % 1000) % 1000 - 100,
+      y: CLOUDS.BASE_Y + i * CLOUDS.Y_VARIATION,
+    })),
+    brickOffset: (score * gameSpeed) % 60,
+    birdPositions: Array.from({ length: 3 }, (_, i) => ({
+      x: (i * 250 + (score * 0.1) % GAME_CONFIG.CANVAS_WIDTH) % GAME_CONFIG.CANVAS_WIDTH,
+      y: 80 + Math.sin((score + i * 100) * 0.01) * 20,
+    })),
+  };
   // 青空のグラデーション
   const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
   skyGradient.addColorStop(0, '#87CEEB'); // 明るい青
@@ -204,81 +233,78 @@ export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gam
   ctx.fill();
   
   // 中景のヨーロッパ風建物群
-  const buildingOffset = (score * 0.3) % 1000;
-  
   // 建物1: 教会風
   ctx.fillStyle = '#D2691E';
-  ctx.fillRect(100 - buildingOffset, 220, 60, 80);
+  ctx.fillRect(100 - background.buildingOffset, 220, 60, 80);
   // 教会の屋根
   ctx.fillStyle = '#8B4513';
   ctx.beginPath();
-  ctx.moveTo(100 - buildingOffset, 220);
-  ctx.lineTo(130 - buildingOffset, 190);
-  ctx.lineTo(160 - buildingOffset, 220);
+  ctx.moveTo(100 - background.buildingOffset, 220);
+  ctx.lineTo(130 - background.buildingOffset, 190);
+  ctx.lineTo(160 - background.buildingOffset, 220);
   ctx.closePath();
   ctx.fill();
   // 十字架
   ctx.fillStyle = '#FFD700';
-  ctx.fillRect(128 - buildingOffset, 185, 4, 10);
-  ctx.fillRect(125 - buildingOffset, 188, 10, 4);
+  ctx.fillRect(128 - background.buildingOffset, 185, 4, 10);
+  ctx.fillRect(125 - background.buildingOffset, 188, 10, 4);
   
   // 建物2: 城壁風
   ctx.fillStyle = '#A0522D';
-  ctx.fillRect(200 - buildingOffset, 240, 80, 60);
+  ctx.fillRect(200 - background.buildingOffset, 240, 80, 60);
   // 城壁の塔
   ctx.fillStyle = '#8B4513';
-  ctx.fillRect(210 - buildingOffset, 230, 15, 70);
-  ctx.fillRect(255 - buildingOffset, 230, 15, 70);
+  ctx.fillRect(210 - background.buildingOffset, 230, 15, 70);
+  ctx.fillRect(255 - background.buildingOffset, 230, 15, 70);
   
   // 建物3: 住宅風
   ctx.fillStyle = '#CD853F';
-  ctx.fillRect(320 - buildingOffset, 250, 50, 50);
+  ctx.fillRect(320 - background.buildingOffset, 250, 50, 50);
   // 屋根
   ctx.fillStyle = '#B22222';
   ctx.beginPath();
-  ctx.moveTo(320 - buildingOffset, 250);
-  ctx.lineTo(345 - buildingOffset, 230);
-  ctx.lineTo(370 - buildingOffset, 250);
+  ctx.moveTo(320 - background.buildingOffset, 250);
+  ctx.lineTo(345 - background.buildingOffset, 230);
+  ctx.lineTo(370 - background.buildingOffset, 250);
   ctx.closePath();
   ctx.fill();
   
   // 建物4: 大聖堂風
   ctx.fillStyle = '#DEB887';
-  ctx.fillRect(450 - buildingOffset, 200, 70, 100);
+  ctx.fillRect(450 - background.buildingOffset, 200, 70, 100);
   // 大聖堂の尖塔
   ctx.fillStyle = '#8B4513';
   ctx.beginPath();
-  ctx.moveTo(485 - buildingOffset, 200);
-  ctx.lineTo(485 - buildingOffset, 170);
-  ctx.lineTo(490 - buildingOffset, 180);
-  ctx.lineTo(495 - buildingOffset, 170);
-  ctx.lineTo(495 - buildingOffset, 200);
+  ctx.moveTo(485 - background.buildingOffset, 200);
+  ctx.lineTo(485 - background.buildingOffset, 170);
+  ctx.lineTo(490 - background.buildingOffset, 180);
+  ctx.lineTo(495 - background.buildingOffset, 170);
+  ctx.lineTo(495 - background.buildingOffset, 200);
   ctx.closePath();
   ctx.fill();
   
   // 建物5: 市場風
   ctx.fillStyle = '#F4A460';
-  ctx.fillRect(600 - buildingOffset, 260, 60, 40);
+  ctx.fillRect(600 - background.buildingOffset, 260, 60, 40);
   // 市場のテント
   ctx.fillStyle = '#DC143C';
   ctx.beginPath();
-  ctx.moveTo(600 - buildingOffset, 260);
-  ctx.lineTo(630 - buildingOffset, 245);
-  ctx.lineTo(660 - buildingOffset, 260);
+  ctx.moveTo(600 - background.buildingOffset, 260);
+  ctx.lineTo(630 - background.buildingOffset, 245);
+  ctx.lineTo(660 - background.buildingOffset, 260);
   ctx.closePath();
   ctx.fill();
   
   // 建物6: 風車小屋
   ctx.fillStyle = '#DDD';
-  ctx.fillRect(750 - buildingOffset, 240, 30, 60);
+  ctx.fillRect(750 - background.buildingOffset, 240, 30, 60);
   // 風車の羽根
   ctx.strokeStyle = '#8B4513';
   ctx.lineWidth = 3;
-  const windmillCenterX = 765 - buildingOffset;
+  const windmillCenterX = 765 - background.buildingOffset;
   const windmillCenterY = 250;
-  const rotation = (score * 0.1) % (Math.PI * 2);
   for (let i = 0; i < 4; i++) {
-    const angle = rotation + (i * Math.PI / 2);
+    const angle = background.windmillRotation + (i * Math.PI / 2);
     ctx.beginPath();
     ctx.moveTo(windmillCenterX, windmillCenterY);
     ctx.lineTo(windmillCenterX + Math.cos(angle) * 20, windmillCenterY + Math.sin(angle) * 20);
@@ -287,9 +313,9 @@ export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gam
   
   // 雲（ふわふわした感じ）
   ctx.fillStyle = COLORS.WHITE;
-  for (let i = 0; i < 4; i++) {
-    const cloudX = (i * 200 + (score * 0.2) % 1000) % 1000 - 100;
-    const cloudY = 50 + i * 20;
+  for (let i = 0; i < background.cloudPositions.length; i++) {
+    const cloudX = background.cloudPositions[i].x;
+    const cloudY = background.cloudPositions[i].y;
     
     // 雲の影
     ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
@@ -327,7 +353,7 @@ export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gam
   // 縦の線（レンガパターン）
   for (let row = 0; row < 3; row++) {
     const yPos = 320 + row * 20;
-    const offset = (row % 2) * 30 + (score * gameSpeed) % 60;
+    const offset = (row % 2) * 30 + background.brickOffset;
     
     for (let x = -60 + offset; x < GAME_CONFIG.CANVAS_WIDTH; x += 60) {
       ctx.beginPath();
@@ -348,7 +374,7 @@ export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gam
   // 地面の草や小石
   ctx.fillStyle = COLORS.GRASS_COLOR;
   for (let i = 0; i < 20; i++) {
-    const x = (i * 40 + (score * gameSpeed) % GAME_CONFIG.CANVAS_WIDTH) % GAME_CONFIG.CANVAS_WIDTH;
+    const x = (i * 40 + background.brickOffset) % GAME_CONFIG.CANVAS_WIDTH;
     const y = 375 + Math.random() * 5;
     ctx.fillRect(x, y, 2, 8);
   }
@@ -356,7 +382,7 @@ export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gam
   // 小石
   ctx.fillStyle = COLORS.STONE_COLOR;
   for (let i = 0; i < 15; i++) {
-    const x = (i * 53 + (score * gameSpeed * 0.8) % GAME_CONFIG.CANVAS_WIDTH) % GAME_CONFIG.CANVAS_WIDTH;
+    const x = (i * 53 + (background.brickOffset * 0.8)) % GAME_CONFIG.CANVAS_WIDTH;
     const y = 370 + Math.random() * 10;
     ctx.beginPath();
     ctx.arc(x, y, 2, 0, Math.PI * 2);
@@ -365,9 +391,9 @@ export const drawBackground = (ctx: CanvasRenderingContext2D, score: number, gam
   
   // 遠景の鳥
   ctx.fillStyle = COLORS.BLACK;
-  for (let i = 0; i < 3; i++) {
-    const birdX = (i * 250 + (score * 0.1) % GAME_CONFIG.CANVAS_WIDTH) % GAME_CONFIG.CANVAS_WIDTH;
-    const birdY = 80 + Math.sin((score + i * 100) * 0.01) * 20;
+  for (let i = 0; i < background.birdPositions.length; i++) {
+    const birdX = background.birdPositions[i].x;
+    const birdY = background.birdPositions[i].y;
     
     // 鳥のシルエット
     ctx.beginPath();
