@@ -64,11 +64,13 @@ export const COLORS = {
   SKY_BOTTOM: '#F0F8FF',
   
   // キャラクターの色
-  SKIN_COLOR: '#FFB6C1',
-  HAIR_COLOR: '#8B4513',
-  SHIRT_COLOR: '#4169E1',
-  PANTS_COLOR: '#654321',
-  SHOES_COLOR: '#000',
+  SKIN_COLOR: '#FDBCB4',
+  HAIR_COLOR: '#FFD700',  // 金髪
+  EYE_COLOR: '#4A90E2',   // 青い目
+  SHIRT_COLOR: '#FF6B6B',  // スポーツウェア - レッド
+  PANTS_COLOR: '#4ECDC4',  // スポーツウェア - ティール
+  SHOES_COLOR: '#FFF',     // 白いスニーカー
+  SHOE_ACCENT: '#FF6B6B',  // スニーカーのアクセント
   
   // 障害物の色
   CACTUS_COLOR: '#228B22',

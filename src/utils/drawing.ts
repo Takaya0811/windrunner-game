@@ -7,104 +7,357 @@
  * - 各要素（キャラクター、障害物、背景など）を描画する関数を分離
  * - 長い描画処理をメインファイルから分離することで、可読性が向上
  */
+// drawing.ts - TypeScriptエラー修正版
 
-import { Character, Obstacle, Collectible } from '@/types/game';
-import { GAME_CONFIG, COLORS, ANIMATION, BUILDINGS, CLOUDS } from '@/utils/constants';
-import { CharacterAnimationCalculations, BackgroundScrollCalculations } from '@/utils/memoizedCalculations';
+import { 
+  Character, 
+  Obstacle, 
+  Collectible 
+} from '../types/game';
+
+import { 
+  COLORS, 
+  GAME_CONFIG, 
+  BUILDINGS, 
+  CLOUDS 
+} from '../utils/constants';
+
+// BackgroundScrollCalculations型の定義
+interface BackgroundScrollCalculations {
+  buildingOffset: number;
+  windmillRotation: number;
+  cloudPositions: Array<{
+    x: number;
+    y: number;
+  }>;
+  brickOffset: number;
+  birdPositions: Array<{
+    x: number;
+    y: number;
+  }>;
+}
+
+// アニメーション計算用の型
+interface CharacterAnimations {
+  eyeHeight: number;
+  hairOffset: number;
+  armSwing: number;
+  leftLegOffset: number;
+  rightLegOffset: number;
+  bodyBounce: number;      // 体の上下運動
+  headTilt: number;        // 頭の傾き
+  breathingOffset: number; // 呼吸による体の動き
+}
 
 /**
- * キャラクター（プレイヤー）を描画する関数（最適化版）
+ * キャラクターのアニメーション値を計算（強化版）
+ */
+const calculateAnimations = (gameSpeed: number, isRunning: boolean): CharacterAnimations => {
+  const time = Date.now() * 0.01;
+  const speedMultiplier = Math.max(1, gameSpeed * 0.5); // スピードに応じてアニメーション速度を調整
+  
+  return {
+    // まばたき（より自然に）
+    eyeHeight: Math.random() > 0.98 ? 1 : (Math.random() > 0.96 ? 4 : 8),
+    
+    // 髪の揺れ（風とスピードに応じて）
+    hairOffset: Math.sin(time * 0.15 * speedMultiplier) * (2 + gameSpeed * 0.5),
+    
+    // 腕の振り（より大きく、自然に）
+    armSwing: isRunning ? 
+      Math.sin(time * 0.5 * speedMultiplier) * (4 + gameSpeed * 0.8) : 
+      Math.sin(time * 0.1) * 0.5, // 静止時も微細な動き
+    
+    // 左足の動き（より動的に）
+    leftLegOffset: isRunning ? 
+      Math.sin(time * 0.6 * speedMultiplier) * (3 + gameSpeed * 0.6) : 
+      0,
+    
+    // 右足の動き（位相をずらしてより自然に）
+    rightLegOffset: isRunning ? 
+      Math.sin(time * 0.6 * speedMultiplier + Math.PI) * (3 + gameSpeed * 0.6) : 
+      0,
+    
+    // 体の上下運動（走る時のバウンス）
+    bodyBounce: isRunning ? 
+      Math.sin(time * 1.2 * speedMultiplier) * (1.5 + gameSpeed * 0.3) : 
+      Math.sin(time * 0.08) * 0.3, // 静止時の呼吸による微細な動き
+    
+    // 頭の傾き（走る時の動的な動き）
+    headTilt: isRunning ? 
+      Math.sin(time * 0.4 * speedMultiplier) * (0.05 + gameSpeed * 0.01) : 
+      0,
+    
+    // 呼吸による体の動き
+    breathingOffset: Math.sin(time * 0.12) * 0.8,
+  };
+};
+
+/**
+ * キャラクターを描画する関数（アニメ風デザイン）
  * @param ctx - 描画コンテキスト
  * @param char - キャラクターの情報
- * @param animationCalcs - 事前計算されたアニメーション値（オプション）
+ * @param gameSpeed - ゲーム速度
  */
 export const drawCharacter = (
   ctx: CanvasRenderingContext2D, 
   char: Character, 
-  animationCalcs?: CharacterAnimationCalculations
+  gameSpeed: number
 ) => {
-  // 事前計算された値を使用するか、従来の計算方法を使用
-  const animations = animationCalcs || {
-    bounce: char.isJumping ? 0 : Math.sin(char.animationFrame * ANIMATION.BOUNCE_SPEED) * ANIMATION.BOUNCE_AMPLITUDE,
-    eyeHeight: (char.animationFrame % ANIMATION.BLINK_INTERVAL) < ANIMATION.BLINK_DURATION ? 2 : 5,
-    hairOffset: char.isJumping ? -2 : Math.sin(char.animationFrame * ANIMATION.HAIR_WAVE_SPEED) * ANIMATION.HAIR_WAVE_AMPLITUDE,
-    armSwing: Math.sin(char.animationFrame * ANIMATION.ARM_SWING_SPEED) * ANIMATION.ARM_SWING_AMPLITUDE,
-    leftLegOffset: Math.sin(char.animationFrame * ANIMATION.LEG_SWING_SPEED) * ANIMATION.LEG_SWING_AMPLITUDE,
-    rightLegOffset: -Math.sin(char.animationFrame * ANIMATION.LEG_SWING_SPEED) * ANIMATION.LEG_SWING_AMPLITUDE,
-  };
-  
-  // 基本位置調整
   const baseX = char.x;
-  const baseY = char.y + animations.bounce;
+  const baseY = char.y;
+  const isRunning = gameSpeed > 0 && !char.isJumping;
   
-  // 体（メイン）
-  ctx.fillStyle = COLORS.SKIN_COLOR;
-  ctx.fillRect(baseX, baseY, char.width, char.height);
+  // アニメーション値を計算
+  const animations = calculateAnimations(gameSpeed, isRunning);
   
-  // 顔
-  ctx.fillStyle = COLORS.SKIN_COLOR;
-  ctx.fillRect(baseX + 5, baseY - 15, 30, 20);
+  // アニメーションによる位置調整
+  const bodyY = baseY + animations.bodyBounce + animations.breathingOffset;
+  const headY = baseY - 15 + animations.bodyBounce;
+  const headTilt = animations.headTilt;
   
-  // 目（まばたき効果）
-  ctx.fillStyle = COLORS.BLACK;
-  ctx.fillRect(baseX + 10, baseY - 10, 4, animations.eyeHeight);
-  ctx.fillRect(baseX + 21, baseY - 10, 4, animations.eyeHeight);
-  
-  // 目の輝き
-  ctx.fillStyle = COLORS.WHITE;
-  ctx.fillRect(baseX + 11, baseY - 9, 1, 1);
-  ctx.fillRect(baseX + 22, baseY - 9, 1, 1);
-  
-  // 髪（風になびく効果）
-  ctx.fillStyle = COLORS.HAIR_COLOR;
-  ctx.fillRect(baseX + 3 + animations.hairOffset, baseY - 20, 34, 10);
-  
-  // 服（メイン）
+  // 体のベース（楕円形で自然な体型）
   ctx.fillStyle = COLORS.SHIRT_COLOR;
-  ctx.fillRect(baseX + 5, baseY + 15, 30, 25);
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20, bodyY + 10, 16, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
   
-  // 服の装飾
+  // 首
+  ctx.fillStyle = COLORS.SKIN_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20, bodyY - 8, 6, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 顔の輪郭（より大きく、アニメ風に）
+  ctx.fillStyle = COLORS.SKIN_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20, headY, 15, 18, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 髪の後ろ部分（金髪）
+  ctx.fillStyle = COLORS.HAIR_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20 + animations.hairOffset, headY, 17, 20, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 前髪（風になびく効果）
+  ctx.fillStyle = COLORS.HAIR_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20 + animations.hairOffset * 0.5, headY - 10, 12, 8, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // サイドの髪
+  ctx.beginPath();
+  ctx.ellipse(baseX + 8 + animations.hairOffset, headY - 3, 6, 12, headTilt * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(baseX + 32 + animations.hairOffset, headY - 3, 6, 12, headTilt * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 目の形（アニメ風の大きな目）
+  const eyeY = headY - 3;
   ctx.fillStyle = COLORS.WHITE;
-  ctx.fillRect(baseX + 15, baseY + 20, 10, 3);
-  ctx.fillRect(baseX + 15, baseY + 28, 10, 3);
+  if (animations.eyeHeight > 2) {
+    // 左目
+    ctx.beginPath();
+    ctx.ellipse(baseX + 14, eyeY, 4, animations.eyeHeight * 0.6, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // 右目
+    ctx.beginPath();
+    ctx.ellipse(baseX + 26, eyeY, 4, animations.eyeHeight * 0.6, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 瞳（青い目）
+    ctx.fillStyle = COLORS.EYE_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 14, eyeY, 3, animations.eyeHeight * 0.4, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 26, eyeY, 3, animations.eyeHeight * 0.4, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 瞳孔
+    ctx.fillStyle = COLORS.BLACK;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 14, eyeY, 1.5, animations.eyeHeight * 0.2, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 26, eyeY, 1.5, animations.eyeHeight * 0.2, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 目の輝き
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.beginPath();
+    ctx.arc(baseX + 15, eyeY - 1, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(baseX + 27, eyeY - 1, 1, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // まばたき時は線だけ
+    ctx.strokeStyle = COLORS.BLACK;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(baseX + 14, eyeY, 4, 0, Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(baseX + 26, eyeY, 4, 0, Math.PI);
+    ctx.stroke();
+  }
   
-  // 腕の動き（走りアニメーション）
+  // 眉毛
+  ctx.strokeStyle = COLORS.HAIR_COLOR;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(baseX + 10, headY - 9);
+  ctx.lineTo(baseX + 18, headY - 10);
+  ctx.moveTo(baseX + 22, headY - 10);
+  ctx.lineTo(baseX + 30, headY - 9);
+  ctx.stroke();
+  
+  // 鼻（小さく、アニメ風）
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  ctx.beginPath();
+  ctx.arc(baseX + 20, headY + 3, 1, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 口（小さく、可愛らしく）
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(baseX + 20, headY + 7, 2, 0, Math.PI);
+  ctx.stroke();
+  
+  // スポーツウェアのシャツ（より詳細に）
+  ctx.fillStyle = COLORS.SHIRT_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20, bodyY + 10, 14, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // シャツの襟
+  ctx.fillStyle = COLORS.WHITE;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20, bodyY + 2, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // シャツのストライプ
+  ctx.fillStyle = COLORS.WHITE;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(baseX + 12, bodyY + 8 + i * 6, 16, 2);
+  }
+  
+  // 腕（アニメ風の滑らかな形）
   ctx.fillStyle = COLORS.SKIN_COLOR;
   if (char.isJumping) {
     // ジャンプ中は腕を上に
-    ctx.fillRect(baseX - 5, baseY + 10, 8, 20);
-    ctx.fillRect(baseX + 37, baseY + 10, 8, 20);
+    ctx.beginPath();
+    ctx.ellipse(baseX + 2, bodyY + 12, 4, 12, Math.PI * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 38, bodyY + 12, 4, 12, -Math.PI * 0.3, 0, Math.PI * 2);
+    ctx.fill();
   } else {
-    // 走り中は腕を振る
-    ctx.fillRect(baseX - 5, baseY + 15 + animations.armSwing, 8, 20);
-    ctx.fillRect(baseX + 37, baseY + 15 - animations.armSwing, 8, 20);
+    // 走り中は腕を振る（より大きな動き）
+    const leftArmY = bodyY + 15 + animations.armSwing + animations.bodyBounce * 0.3;
+    const rightArmY = bodyY + 15 - animations.armSwing + animations.bodyBounce * 0.3;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 2, leftArmY, 4, 12, animations.armSwing * 0.02, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 38, rightArmY, 4, 12, -animations.armSwing * 0.02, 0, Math.PI * 2);
+    ctx.fill();
   }
   
-  // 足の動き（走りアニメーション）
+  // 手（グローブ風）
+  ctx.fillStyle = COLORS.WHITE;
+  if (char.isJumping) {
+    ctx.beginPath();
+    ctx.arc(baseX + 2, bodyY + 22, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(baseX + 38, bodyY + 22, 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const leftHandY = bodyY + 25 + animations.armSwing + animations.bodyBounce * 0.3;
+    const rightHandY = bodyY + 25 - animations.armSwing + animations.bodyBounce * 0.3;
+    ctx.beginPath();
+    ctx.arc(baseX + 2, leftHandY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(baseX + 38, rightHandY, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // スポーツパンツ（ショートパンツ風）
   ctx.fillStyle = COLORS.PANTS_COLOR;
   if (char.isJumping) {
-    // ジャンプ中は足を曲げる
-    ctx.fillRect(baseX + 8, baseY + 45, 8, 15);
-    ctx.fillRect(baseX + 24, baseY + 45, 8, 15);
+    ctx.beginPath();
+    ctx.ellipse(baseX + 12, bodyY + 40, 6, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 28, bodyY + 40, 6, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else {
-    // 走り中は足を交互に動かす
-    const leftLegY = baseY + 40 + animations.leftLegOffset;
-    const rightLegY = baseY + 40 + animations.rightLegOffset;
-    ctx.fillRect(baseX + 8, leftLegY, 8, 20);
-    ctx.fillRect(baseX + 24, rightLegY, 8, 20);
+    // 走り中は足を交互に動かす（より動的に）
+    const leftLegY = bodyY + 40 + animations.leftLegOffset + animations.bodyBounce * 0.2;
+    const rightLegY = bodyY + 40 + animations.rightLegOffset + animations.bodyBounce * 0.2;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 12, leftLegY, 6, 12, animations.leftLegOffset * 0.01, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 28, rightLegY, 6, 12, animations.rightLegOffset * 0.01, 0, Math.PI * 2);
+    ctx.fill();
   }
   
-  // 靴
-  ctx.fillStyle = COLORS.SHOES_COLOR;
-  const leftShoeY = char.isJumping ? baseY + 58 : baseY + 58 + animations.leftLegOffset;
-  const rightShoeY = char.isJumping ? baseY + 58 : baseY + 58 + animations.rightLegOffset;
-  ctx.fillRect(baseX + 6, leftShoeY, 12, 4);
-  ctx.fillRect(baseX + 22, rightShoeY, 12, 4);
+  // 足（素肌部分）
+  ctx.fillStyle = COLORS.SKIN_COLOR;
+  if (char.isJumping) {
+    ctx.beginPath();
+    ctx.ellipse(baseX + 12, bodyY + 52, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 28, bodyY + 52, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const leftLegY = bodyY + 52 + animations.leftLegOffset + animations.bodyBounce * 0.2;
+    const rightLegY = bodyY + 52 + animations.rightLegOffset + animations.bodyBounce * 0.2;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 12, leftLegY, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 28, rightLegY, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   
-  // 影
+  // スニーカー（白いスポーツシューズ）
+  ctx.fillStyle = COLORS.SHOES_COLOR;
+  const leftShoeY = char.isJumping ? 
+    bodyY + 58 : 
+    bodyY + 58 + animations.leftLegOffset + animations.bodyBounce * 0.2;
+  const rightShoeY = char.isJumping ? 
+    bodyY + 58 : 
+    bodyY + 58 + animations.rightLegOffset + animations.bodyBounce * 0.2;
+  
+  ctx.beginPath();
+  ctx.ellipse(baseX + 12, leftShoeY, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(baseX + 28, rightShoeY, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // スニーカーのアクセント
+  ctx.fillStyle = COLORS.SHOE_ACCENT;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 12, leftShoeY - 1, 6, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(baseX + 28, rightShoeY - 1, 6, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 影（より自然に）
   ctx.fillStyle = COLORS.SHADOW_COLOR;
   ctx.beginPath();
-  ctx.ellipse(baseX + 20, 380, 25, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(baseX + 20, 380, 22, 6, 0, 0, Math.PI * 2);
   ctx.fill();
   
   // ジャンプ時のエフェクト
@@ -116,6 +369,18 @@ export const drawCharacter = (
       const smokeY = 375 + Math.random() * 10;
       ctx.beginPath();
       ctx.arc(smokeX, smokeY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  // 走り時のスピードエフェクト
+  if (isRunning && gameSpeed > 3) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    for (let i = 0; i < 3; i++) {
+      const effectX = baseX - 10 - i * 5;
+      const effectY = baseY + 10 + Math.random() * 20;
+      ctx.beginPath();
+      ctx.ellipse(effectX, effectY, 3, 8, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -171,6 +436,7 @@ export const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) 
  */
 export const drawCollectible = (ctx: CanvasRenderingContext2D, collectible: Collectible) => {
   if (!collectible.collected) {
+    // 星の背景（光る効果）
     ctx.fillStyle = COLORS.COLLECTIBLE_COLOR;
     ctx.beginPath();
     ctx.arc(collectible.x + 10, collectible.y + 10, 10, 0, Math.PI * 2);
@@ -179,7 +445,8 @@ export const drawCollectible = (ctx: CanvasRenderingContext2D, collectible: Coll
     // 星の形
     ctx.fillStyle = COLORS.COLLECTIBLE_STAR_COLOR;
     ctx.font = '16px Arial';
-    ctx.fillText('★', collectible.x + 3, collectible.y + 16);
+    ctx.textAlign = 'center';
+    ctx.fillText('★', collectible.x + 10, collectible.y + 16);
   }
 };
 
@@ -210,6 +477,7 @@ export const drawBackground = (
       y: 80 + Math.sin((score + i * 100) * 0.01) * 20,
     })),
   };
+
   // 青空のグラデーション
   const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
   skyGradient.addColorStop(0, '#87CEEB'); // 明るい青
@@ -339,7 +607,7 @@ export const drawBackground = (
   ctx.fillRect(0, 300, GAME_CONFIG.CANVAS_WIDTH, GAME_CONFIG.GROUND_HEIGHT);
   
   // レンガのパターン
-  ctx.fillStyle = COLORS.GROUND_LINE_COLOR;
+  ctx.strokeStyle = COLORS.GROUND_LINE_COLOR;
   ctx.lineWidth = 2;
   
   // 横の線
@@ -410,4 +678,7 @@ export const drawBackground = (
     ctx.lineTo(birdX + 3, birdY - 2);
     ctx.stroke();
   }
+  
+  // テキスト描画のリセット
+  ctx.textAlign = 'left';
 };

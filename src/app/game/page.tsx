@@ -3,7 +3,6 @@
 import { useRef, useEffect } from 'react';
 import { useGameLoop } from '@/hooks/useGameLoop';
 import { useGameState } from '@/hooks/useGameState';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function GamePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -12,6 +11,7 @@ export default function GamePage() {
   // ゲーム状態管理（カスタムフックで最適化）
   const {
     score,
+
     gameSpeed,
     gameOver,
     gameStarted,
@@ -74,19 +74,12 @@ export default function GamePage() {
     collectiblesRef
   });
 
-
-
-
-
-
   return (
-    <ErrorBoundary>
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-400 to-pink-400 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-400 to-pink-400 p-4">
       <div className="bg-white rounded-lg shadow-2xl p-6 max-w-4xl w-full">
         <h1 className="text-4xl font-bold text-center text-purple-600 mb-4">
           🏃‍♂️ Wind Runner Game 🏃‍♂️
         </h1>
-        
         <div className="flex justify-between items-center mb-4">
           <div className="text-xl font-bold">
             スコア: <span className="text-blue-600">{score}</span>
@@ -137,7 +130,6 @@ export default function GamePage() {
           </div>
         </div>
       </div>
-      </div>
-    </ErrorBoundary>
+    </div>
   );
 }
