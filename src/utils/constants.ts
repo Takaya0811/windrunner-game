@@ -111,6 +111,18 @@ export const ANIMATION = {
   HAIR_WAVE_AMPLITUDE: 1,   // 髪の揺れの振幅
 };
 
+// パララックス効果の設定
+export const PARALLAX = {
+  // 各層のスクロール速度倍率（Temple Runスタイル - 最適化済み）
+  FAR_BACKGROUND: 0.08,     // 遠景（空、山、雲）- より遅く
+  MID_BACKGROUND: 0.25,     // 中景（建物、樹木）- やや遅く
+  NEAR_BACKGROUND: 0.6,     // 近景（草、石、小オブジェクト）- 適度
+  FOREGROUND: 1.0,          // 前景（地面、道路）- 基準速度
+  
+  // 繰り返し距離
+  REPEAT_DISTANCE: 1600,    // 背景要素の繰り返し距離
+};
+
 // 建物の設定（背景用）
 export const BUILDINGS = {
   SCROLL_SPEED: 0.3,        // 建物のスクロール速度
@@ -124,4 +136,20 @@ export const CLOUDS = {
   SCROLL_SPEED: 0.2,        // 雲のスクロール速度
   BASE_Y: 50,               // 雲の基本Y位置
   Y_VARIATION: 20,          // 雲のY位置のばらつき
+};
+
+// 地面レイヤーの設定
+export const GROUND_LAYERS = {
+  // 道路（最前景）
+  ROAD_Y: 300,              // 道路の開始Y位置
+  ROAD_HEIGHT: 100,         // 道路の高さ
+  ROAD_COLOR: '#8B7355',    // 道路の基本色
+  
+  // レンガパターン
+  BRICK_WIDTH: 60,          // レンガの幅
+  BRICK_HEIGHT: 20,         // レンガの高さ
+  
+  // 草地（近景）
+  GRASS_COUNT: 30,          // 草の数
+  GRASS_HEIGHT: 8,          // 草の高さ
 };

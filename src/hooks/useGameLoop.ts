@@ -13,7 +13,6 @@ import { Character, Obstacle, Collectible } from '@/types/game';
 import { GAME_CONFIG } from '@/utils/constants';
 import { drawCharacter, drawObstacle, drawCollectible, drawBackground } from '@/utils/drawing';
 import { checkCharacterObstacleCollision, checkCharacterCollectibleCollision } from '@/utils/collision';
-import { calculateBackgroundScroll } from '@/utils/memoizedCalculations';
 
 /**
  * ゲームループで使用するパラメータの型定義
@@ -210,11 +209,9 @@ export const useGameLoop = (params: UseGameLoopParams) => {
     // 背景描画の計算値を準備
     const currentScore = scoreRef.current || 0;
     const currentGameSpeed = gameSpeedRef.current || GAME_CONFIG.INITIAL_GAME_SPEED;
-    const backgroundCalculations = calculateBackgroundScroll(currentScore, currentGameSpeed);
-    
 
-    // 描画実行
-    drawBackground(ctx, currentScore, currentGameSpeed, backgroundCalculations);
+    // 描画実行（新しいパララックス対応版）
+    drawBackground(ctx, currentScore, currentGameSpeed);
     if (currentCharacter) {
       drawCharacter(ctx, currentCharacter, currentGameSpeed);
     }

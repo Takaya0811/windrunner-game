@@ -19,10 +19,22 @@ import {
   COLORS, 
   GAME_CONFIG, 
   BUILDINGS, 
-  CLOUDS 
+  CLOUDS,
+  PARALLAX,
+  GROUND_LAYERS
 } from '../utils/constants';
 
-// BackgroundScrollCalculations型の定義
+// パララックス背景の計算値型定義
+interface ParallaxScrollCalculations {
+  farBackground: number;    // 遠景のオフセット
+  midBackground: number;    // 中景のオフセット
+  nearBackground: number;   // 近景のオフセット
+  foreground: number;       // 前景のオフセット
+  windmillRotation: number; // 風車の回転角度
+}
+
+// 従来との互換性のための型定義（廃止予定）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface BackgroundScrollCalculations {
   buildingOffset: number;
   windmillRotation: number;
@@ -451,34 +463,31 @@ export const drawCollectible = (ctx: CanvasRenderingContext2D, collectible: Coll
 };
 
 /**
- * 背景を描画する関数（最適化版）
- * @param ctx - 描画コンテキスト
- * @param score - 現在のスコア（スクロール計算用）
- * @param gameSpeed - ゲーム速度（スクロール計算用）
- * @param backgroundCalcs - 事前計算された背景スクロール値（オプション）
+ * パララックススクロール値を計算する関数（最適化済み）
+ * @param score - 現在のスコア
+ * @param gameSpeed - ゲーム速度
+ * @returns パララックススクロール計算値
  */
-export const drawBackground = (
-  ctx: CanvasRenderingContext2D, 
-  score: number, 
-  gameSpeed: number,
-  backgroundCalcs?: BackgroundScrollCalculations
-) => {
-  // 事前計算された値を使用するか、従来の計算方法を使用
-  const background = backgroundCalcs || {
-    buildingOffset: (score * BUILDINGS.SCROLL_SPEED) % 1000,
-    windmillRotation: (score * BUILDINGS.WINDMILL_ROTATION_SPEED) % (Math.PI * 2),
-    cloudPositions: Array.from({ length: CLOUDS.COUNT }, (_, i) => ({
-      x: (i * CLOUDS.SPACING + (score * CLOUDS.SCROLL_SPEED) % 1000) % 1000 - 100,
-      y: CLOUDS.BASE_Y + i * CLOUDS.Y_VARIATION,
-    })),
-    brickOffset: (score * gameSpeed) % 60,
-    birdPositions: Array.from({ length: 3 }, (_, i) => ({
-      x: (i * 250 + (score * 0.1) % GAME_CONFIG.CANVAS_WIDTH) % GAME_CONFIG.CANVAS_WIDTH,
-      y: 80 + Math.sin((score + i * 100) * 0.01) * 20,
-    })),
+const calculateParallaxOffsets = (score: number, gameSpeed: number): ParallaxScrollCalculations => {
+  // 基本オフセットを計算（スムースなスクロール）
+  const baseOffset = score * gameSpeed * 0.5; // スクロール係数を調整
+  
+  return {
+    farBackground: (baseOffset * PARALLAX.FAR_BACKGROUND) % PARALLAX.REPEAT_DISTANCE,
+    midBackground: (baseOffset * PARALLAX.MID_BACKGROUND) % PARALLAX.REPEAT_DISTANCE,
+    nearBackground: (baseOffset * PARALLAX.NEAR_BACKGROUND) % PARALLAX.REPEAT_DISTANCE,
+    foreground: (baseOffset * PARALLAX.FOREGROUND) % PARALLAX.REPEAT_DISTANCE,
+    windmillRotation: (score * BUILDINGS.WINDMILL_ROTATION_SPEED * 0.3) % (Math.PI * 2), // 風車を遅く
   };
+};
 
-  // 青空のグラデーション
+/**
+ * 遠景レイヤーを描画（空、山、雲）
+ * @param ctx - 描画コンテキスト
+ * @param offset - パララックスオフセット
+ */
+const drawFarBackground = (ctx: CanvasRenderingContext2D, offset: number) => {
+  // 空のグラデーション
   const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
   skyGradient.addColorStop(0, '#87CEEB'); // 明るい青
   skyGradient.addColorStop(0.7, '#B0E0E6'); // 薄い青
@@ -486,132 +495,194 @@ export const drawBackground = (
   ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, GAME_CONFIG.CANVAS_WIDTH, 300);
   
-  // 遠景の山々
+  // 遠景の山々（非常にゆっくり動く）
   ctx.fillStyle = '#9370DB';
-  ctx.beginPath();
-  ctx.moveTo(0, 200);
-  ctx.lineTo(150, 150);
-  ctx.lineTo(300, 180);
-  ctx.lineTo(450, 140);
-  ctx.lineTo(600, 170);
-  ctx.lineTo(800, 160);
-  ctx.lineTo(800, 300);
-  ctx.lineTo(0, 300);
-  ctx.closePath();
-  ctx.fill();
+  const mountainOffset = offset * 0.5; // さらに遅く
   
-  // 中景のヨーロッパ風建物群
-  // 建物1: 教会風
-  ctx.fillStyle = '#D2691E';
-  ctx.fillRect(100 - background.buildingOffset, 220, 60, 80);
-  // 教会の屋根
-  ctx.fillStyle = '#8B4513';
-  ctx.beginPath();
-  ctx.moveTo(100 - background.buildingOffset, 220);
-  ctx.lineTo(130 - background.buildingOffset, 190);
-  ctx.lineTo(160 - background.buildingOffset, 220);
-  ctx.closePath();
-  ctx.fill();
-  // 十字架
-  ctx.fillStyle = '#FFD700';
-  ctx.fillRect(128 - background.buildingOffset, 185, 4, 10);
-  ctx.fillRect(125 - background.buildingOffset, 188, 10, 4);
-  
-  // 建物2: 城壁風
-  ctx.fillStyle = '#A0522D';
-  ctx.fillRect(200 - background.buildingOffset, 240, 80, 60);
-  // 城壁の塔
-  ctx.fillStyle = '#8B4513';
-  ctx.fillRect(210 - background.buildingOffset, 230, 15, 70);
-  ctx.fillRect(255 - background.buildingOffset, 230, 15, 70);
-  
-  // 建物3: 住宅風
-  ctx.fillStyle = '#CD853F';
-  ctx.fillRect(320 - background.buildingOffset, 250, 50, 50);
-  // 屋根
-  ctx.fillStyle = '#B22222';
-  ctx.beginPath();
-  ctx.moveTo(320 - background.buildingOffset, 250);
-  ctx.lineTo(345 - background.buildingOffset, 230);
-  ctx.lineTo(370 - background.buildingOffset, 250);
-  ctx.closePath();
-  ctx.fill();
-  
-  // 建物4: 大聖堂風
-  ctx.fillStyle = '#DEB887';
-  ctx.fillRect(450 - background.buildingOffset, 200, 70, 100);
-  // 大聖堂の尖塔
-  ctx.fillStyle = '#8B4513';
-  ctx.beginPath();
-  ctx.moveTo(485 - background.buildingOffset, 200);
-  ctx.lineTo(485 - background.buildingOffset, 170);
-  ctx.lineTo(490 - background.buildingOffset, 180);
-  ctx.lineTo(495 - background.buildingOffset, 170);
-  ctx.lineTo(495 - background.buildingOffset, 200);
-  ctx.closePath();
-  ctx.fill();
-  
-  // 建物5: 市場風
-  ctx.fillStyle = '#F4A460';
-  ctx.fillRect(600 - background.buildingOffset, 260, 60, 40);
-  // 市場のテント
-  ctx.fillStyle = '#DC143C';
-  ctx.beginPath();
-  ctx.moveTo(600 - background.buildingOffset, 260);
-  ctx.lineTo(630 - background.buildingOffset, 245);
-  ctx.lineTo(660 - background.buildingOffset, 260);
-  ctx.closePath();
-  ctx.fill();
-  
-  // 建物6: 風車小屋
-  ctx.fillStyle = '#DDD';
-  ctx.fillRect(750 - background.buildingOffset, 240, 30, 60);
-  // 風車の羽根
-  ctx.strokeStyle = '#8B4513';
-  ctx.lineWidth = 3;
-  const windmillCenterX = 765 - background.buildingOffset;
-  const windmillCenterY = 250;
-  for (let i = 0; i < 4; i++) {
-    const angle = background.windmillRotation + (i * Math.PI / 2);
+  // 山の形状を複数描画して継続感を作る
+  for (let i = -1; i <= 1; i++) {
+    const baseX = i * GAME_CONFIG.CANVAS_WIDTH - mountainOffset;
     ctx.beginPath();
-    ctx.moveTo(windmillCenterX, windmillCenterY);
-    ctx.lineTo(windmillCenterX + Math.cos(angle) * 20, windmillCenterY + Math.sin(angle) * 20);
-    ctx.stroke();
+    ctx.moveTo(baseX, 200);
+    ctx.lineTo(baseX + 150, 150);
+    ctx.lineTo(baseX + 300, 180);
+    ctx.lineTo(baseX + 450, 140);
+    ctx.lineTo(baseX + 600, 170);
+    ctx.lineTo(baseX + 800, 160);
+    ctx.lineTo(baseX + 800, 300);
+    ctx.lineTo(baseX, 300);
+    ctx.closePath();
+    ctx.fill();
   }
   
-  // 雲（ふわふわした感じ）
+  // 雲（ゆっくり動く）
   ctx.fillStyle = COLORS.WHITE;
-  for (let i = 0; i < background.cloudPositions.length; i++) {
-    const cloudX = background.cloudPositions[i].x;
-    const cloudY = background.cloudPositions[i].y;
+  const cloudOffset = offset * 0.8;
+  
+  for (let i = 0; i < CLOUDS.COUNT * 2; i++) {
+    const cloudX = (i * CLOUDS.SPACING - cloudOffset) % (PARALLAX.REPEAT_DISTANCE) - 100;
+    const cloudY = CLOUDS.BASE_Y + (i % CLOUDS.COUNT) * CLOUDS.Y_VARIATION;
     
-    // 雲の影
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    ctx.beginPath();
-    ctx.arc(cloudX + 2, cloudY + 2, 25, 0, Math.PI * 2);
-    ctx.arc(cloudX + 22, cloudY + 2, 18, 0, Math.PI * 2);
-    ctx.arc(cloudX + 42, cloudY + 2, 22, 0, Math.PI * 2);
-    ctx.fill();
+    if (cloudX > -150 && cloudX < GAME_CONFIG.CANVAS_WIDTH + 50) {
+      // 雲の影
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.beginPath();
+      ctx.arc(cloudX + 2, cloudY + 2, 25, 0, Math.PI * 2);
+      ctx.arc(cloudX + 22, cloudY + 2, 18, 0, Math.PI * 2);
+      ctx.arc(cloudX + 42, cloudY + 2, 22, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 雲本体
+      ctx.fillStyle = COLORS.WHITE;
+      ctx.beginPath();
+      ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
+      ctx.arc(cloudX + 20, cloudY, 18, 0, Math.PI * 2);
+      ctx.arc(cloudX + 40, cloudY, 22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+};
+
+/**
+ * 中景レイヤーを描画（建物、樹木）
+ * @param ctx - 描画コンテキスト
+ * @param offset - パララックスオフセット
+ * @param windmillRotation - 風車の回転角度
+ */
+const drawMidBackground = (ctx: CanvasRenderingContext2D, offset: number, windmillRotation: number) => {
+  // 建物群（中程度の速度で動く）
+  const buildings = [
+    { x: 100, y: 220, width: 60, height: 80, type: 'church' },
+    { x: 200, y: 240, width: 80, height: 60, type: 'castle' },
+    { x: 320, y: 250, width: 50, height: 50, type: 'house' },
+    { x: 450, y: 200, width: 70, height: 100, type: 'cathedral' },
+    { x: 600, y: 260, width: 60, height: 40, type: 'market' },
+    { x: 750, y: 240, width: 30, height: 60, type: 'windmill' },
+  ];
+  
+  // 建物を繰り返し描画
+  for (let repeat = -1; repeat <= 2; repeat++) {
+    const repeatOffset = repeat * 800;
     
-    // 雲本体
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.beginPath();
-    ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
-    ctx.arc(cloudX + 20, cloudY, 18, 0, Math.PI * 2);
-    ctx.arc(cloudX + 40, cloudY, 22, 0, Math.PI * 2);
-    ctx.fill();
+    buildings.forEach(building => {
+      const buildingX = building.x + repeatOffset - offset;
+      
+      if (buildingX > -100 && buildingX < GAME_CONFIG.CANVAS_WIDTH + 100) {
+        switch (building.type) {
+          case 'church':
+            // 教会
+            ctx.fillStyle = '#D2691E';
+            ctx.fillRect(buildingX, building.y, building.width, building.height);
+            // 屋根
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(buildingX, building.y);
+            ctx.lineTo(buildingX + building.width/2, building.y - 30);
+            ctx.lineTo(buildingX + building.width, building.y);
+            ctx.closePath();
+            ctx.fill();
+            // 十字架
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(buildingX + building.width/2 - 2, building.y - 35, 4, 10);
+            ctx.fillRect(buildingX + building.width/2 - 5, building.y - 32, 10, 4);
+            break;
+            
+          case 'windmill':
+            // 風車小屋
+            ctx.fillStyle = '#DDD';
+            ctx.fillRect(buildingX, building.y, building.width, building.height);
+            // 風車の羽根（回転）
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 3;
+            const centerX = buildingX + building.width/2;
+            const centerY = building.y + 10;
+            for (let i = 0; i < 4; i++) {
+              const angle = windmillRotation + (i * Math.PI / 2);
+              ctx.beginPath();
+              ctx.moveTo(centerX, centerY);
+              ctx.lineTo(centerX + Math.cos(angle) * 20, centerY + Math.sin(angle) * 20);
+              ctx.stroke();
+            }
+            break;
+            
+          default:
+            // その他の建物
+            ctx.fillStyle = '#A0522D';
+            ctx.fillRect(buildingX, building.y, building.width, building.height);
+        }
+      }
+    });
+  }
+};
+
+/**
+ * 近景レイヤーを描画（草、石、小オブジェクト）
+ * @param ctx - 描画コンテキスト
+ * @param offset - パララックスオフセット
+ */
+const drawNearBackground = (ctx: CanvasRenderingContext2D, offset: number) => {
+  // 草（比較的速く動く）
+  ctx.fillStyle = COLORS.GRASS_COLOR;
+  for (let i = 0; i < GROUND_LAYERS.GRASS_COUNT; i++) {
+    const grassX = (i * 40 - offset) % PARALLAX.REPEAT_DISTANCE;
+    const grassY = 375 + Math.sin(i * 0.5) * 3;
+    
+    if (grassX > -10 && grassX < GAME_CONFIG.CANVAS_WIDTH + 10) {
+      ctx.fillRect(grassX, grassY, 2, GROUND_LAYERS.GRASS_HEIGHT);
+      // 追加の草の葉
+      ctx.fillRect(grassX - 1, grassY + 2, 1, 4);
+      ctx.fillRect(grassX + 2, grassY + 1, 1, 5);
+    }
   }
   
-  // レンガ風の地面
-  ctx.fillStyle = COLORS.GROUND_COLOR;
-  ctx.fillRect(0, 300, GAME_CONFIG.CANVAS_WIDTH, GAME_CONFIG.GROUND_HEIGHT);
+  // 小石
+  ctx.fillStyle = COLORS.STONE_COLOR;
+  for (let i = 0; i < 20; i++) {
+    const stoneX = (i * 53 - offset * 0.8) % PARALLAX.REPEAT_DISTANCE;
+    const stoneY = 370 + Math.sin(i * 0.7) * 8;
+    
+    if (stoneX > -5 && stoneX < GAME_CONFIG.CANVAS_WIDTH + 5) {
+      ctx.beginPath();
+      ctx.arc(stoneX, stoneY, 2 + Math.sin(i) * 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   
-  // レンガのパターン
+  // 小さな花
+  for (let i = 0; i < 15; i++) {
+    const flowerX = (i * 67 - offset * 0.9) % PARALLAX.REPEAT_DISTANCE;
+    const flowerY = 372 + Math.sin(i * 0.3) * 5;
+    
+    if (flowerX > -5 && flowerX < GAME_CONFIG.CANVAS_WIDTH + 5) {
+      // 花びら
+      ctx.fillStyle = ['#FF69B4', '#FFB6C1', '#FFF8DC'][i % 3];
+      ctx.beginPath();
+      ctx.arc(flowerX, flowerY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 茎
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(flowerX - 0.5, flowerY, 1, 6);
+    }
+  }
+};
+
+/**
+ * 前景レイヤーを描画（地面、道路）
+ * @param ctx - 描画コンテキスト
+ * @param offset - パララックスオフセット
+ */
+const drawForeground = (ctx: CanvasRenderingContext2D, offset: number) => {
+  // 道路基盤
+  ctx.fillStyle = GROUND_LAYERS.ROAD_COLOR;
+  ctx.fillRect(0, GROUND_LAYERS.ROAD_Y, GAME_CONFIG.CANVAS_WIDTH, GROUND_LAYERS.ROAD_HEIGHT);
+  
+  // レンガのパターン（最も速く動く）
   ctx.strokeStyle = COLORS.GROUND_LINE_COLOR;
   ctx.lineWidth = 2;
   
   // 横の線
-  for (let y = 320; y < 380; y += 20) {
+  for (let y = GROUND_LAYERS.ROAD_Y + 20; y < GROUND_LAYERS.ROAD_Y + GROUND_LAYERS.ROAD_HEIGHT; y += GROUND_LAYERS.BRICK_HEIGHT) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(GAME_CONFIG.CANVAS_WIDTH, y);
@@ -619,66 +690,58 @@ export const drawBackground = (
   }
   
   // 縦の線（レンガパターン）
-  for (let row = 0; row < 3; row++) {
-    const yPos = 320 + row * 20;
-    const offset = (row % 2) * 30 + background.brickOffset;
+  const brickRows = Math.floor(GROUND_LAYERS.ROAD_HEIGHT / GROUND_LAYERS.BRICK_HEIGHT);
+  for (let row = 0; row < brickRows; row++) {
+    const yPos = GROUND_LAYERS.ROAD_Y + 20 + row * GROUND_LAYERS.BRICK_HEIGHT;
+    const brickOffset = (row % 2) * (GROUND_LAYERS.BRICK_WIDTH / 2) + offset;
     
-    for (let x = -60 + offset; x < GAME_CONFIG.CANVAS_WIDTH; x += 60) {
+    for (let x = -GROUND_LAYERS.BRICK_WIDTH + (brickOffset % GROUND_LAYERS.BRICK_WIDTH); x < GAME_CONFIG.CANVAS_WIDTH; x += GROUND_LAYERS.BRICK_WIDTH) {
       ctx.beginPath();
       ctx.moveTo(x, yPos);
-      ctx.lineTo(x, yPos + 20);
+      ctx.lineTo(x, yPos + GROUND_LAYERS.BRICK_HEIGHT);
       ctx.stroke();
     }
   }
   
   // レンガの質感
   ctx.fillStyle = 'rgba(139, 69, 19, 0.3)';
-  for (let i = 0; i < 50; i++) {
-    const x = Math.random() * GAME_CONFIG.CANVAS_WIDTH;
-    const y = 300 + Math.random() * GAME_CONFIG.GROUND_HEIGHT;
-    ctx.fillRect(x, y, 2, 2);
+  for (let i = 0; i < 80; i++) {
+    const textureX = (i * 13 - offset * 1.2) % GAME_CONFIG.CANVAS_WIDTH;
+    const textureY = GROUND_LAYERS.ROAD_Y + Math.random() * GROUND_LAYERS.ROAD_HEIGHT;
+    ctx.fillRect(textureX, textureY, 2, 2);
   }
   
-  // 地面の草や小石
-  ctx.fillStyle = COLORS.GRASS_COLOR;
-  for (let i = 0; i < 20; i++) {
-    const x = (i * 40 + background.brickOffset) % GAME_CONFIG.CANVAS_WIDTH;
-    const y = 375 + Math.random() * 5;
-    ctx.fillRect(x, y, 2, 8);
+  // 道路の中央線
+  ctx.fillStyle = '#FFFF00';
+  const centerY = GROUND_LAYERS.ROAD_Y + GROUND_LAYERS.ROAD_HEIGHT / 2;
+  for (let x = (-offset * 1.5) % 60; x < GAME_CONFIG.CANVAS_WIDTH; x += 30) {
+    ctx.fillRect(x, centerY - 1, 15, 2);
   }
+};
+
+/**
+ * 背景を描画する関数（パララックス対応版）
+ * @param ctx - 描画コンテキスト
+ * @param score - 現在のスコア（スクロール計算用）
+ * @param gameSpeed - ゲーム速度（スクロール計算用）
+ * 
+ * 注意: 第4引数backgroundCalcsは旧式互換性のために残していますが、新しいパララックス実装では使用されません
+ */
+export const drawBackground = (
+  ctx: CanvasRenderingContext2D, 
+  score: number, 
+  gameSpeed: number
+) => {
+  // パララックススクロール値を計算
+  const parallax = calculateParallaxOffsets(score, gameSpeed);
   
-  // 小石
-  ctx.fillStyle = COLORS.STONE_COLOR;
-  for (let i = 0; i < 15; i++) {
-    const x = (i * 53 + (background.brickOffset * 0.8)) % GAME_CONFIG.CANVAS_WIDTH;
-    const y = 370 + Math.random() * 10;
-    ctx.beginPath();
-    ctx.arc(x, y, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  
-  // 遠景の鳥
-  ctx.fillStyle = COLORS.BLACK;
-  for (let i = 0; i < background.birdPositions.length; i++) {
-    const birdX = background.birdPositions[i].x;
-    const birdY = background.birdPositions[i].y;
-    
-    // 鳥のシルエット
-    ctx.beginPath();
-    ctx.arc(birdX, birdY, 1, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // 翼
-    ctx.strokeStyle = COLORS.BLACK;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(birdX - 3, birdY);
-    ctx.lineTo(birdX - 1, birdY - 2);
-    ctx.lineTo(birdX + 1, birdY);
-    ctx.lineTo(birdX + 3, birdY - 2);
-    ctx.stroke();
-  }
+  // 各層を順番に描画（奥から手前へ）
+  drawFarBackground(ctx, parallax.farBackground);
+  drawMidBackground(ctx, parallax.midBackground, parallax.windmillRotation);
+  drawNearBackground(ctx, parallax.nearBackground);
+  drawForeground(ctx, parallax.foreground);
   
   // テキスト描画のリセット
   ctx.textAlign = 'left';
 };
+
