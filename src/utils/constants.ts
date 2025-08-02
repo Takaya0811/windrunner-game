@@ -63,14 +63,30 @@ export const COLORS = {
   SKY_MIDDLE: '#B0E0E6',
   SKY_BOTTOM: '#F0F8FF',
   
-  // キャラクターの色
-  SKIN_COLOR: '#FDBCB4',
-  HAIR_COLOR: '#FFD700',  // 金髪
-  EYE_COLOR: '#4A90E2',   // 青い目
-  SHIRT_COLOR: '#FF6B6B',  // スポーツウェア - レッド
-  PANTS_COLOR: '#4ECDC4',  // スポーツウェア - ティール
-  SHOES_COLOR: '#FFF',     // 白いスニーカー
-  SHOE_ACCENT: '#FF6B6B',  // スニーカーのアクセント
+  // キャラクターの色（モダンパレット）
+  SKIN_COLOR: '#FFDBAC',        // より自然な肌色
+  SKIN_SHADOW: '#E8C4A0',       // 肌の影
+  SKIN_HIGHLIGHT: '#FFF2E6',    // 肌のハイライト
+  
+  HAIR_COLOR: '#F4D03F',        // 洗練された金髪
+  HAIR_SHADOW: '#D4AC0D',       // 髪の影
+  HAIR_HIGHLIGHT: '#FCF3CF',    // 髪のハイライト
+  
+  EYE_COLOR: '#3498DB',         // 深みのある青い目
+  EYE_HIGHLIGHT: '#85C1E9',     // 目のハイライト
+  
+  SHIRT_COLOR: '#E74C3C',       // 洗練されたスポーツレッド
+  SHIRT_SHADOW: '#C0392B',      // シャツの影
+  SHIRT_HIGHLIGHT: '#F1948A',   // シャツのハイライト
+  
+  PANTS_COLOR: '#48C9B0',       // モダンなティール
+  PANTS_SHADOW: '#17A2B8',      // パンツの影
+  PANTS_HIGHLIGHT: '#7DCEA0',   // パンツのハイライト
+  
+  SHOES_COLOR: '#F8F9FA',       // 純白スニーカー
+  SHOE_ACCENT: '#E74C3C',       // スニーカーアクセント
+  SHOE_SHADOW: '#DEE2E6',       // 靴の影
+  SHOE_SOLE: '#343A40',         // 靴底
   
   // 障害物の色
   CACTUS_COLOR: '#228B22',

@@ -1,0 +1,269 @@
+
+> windrunner-game@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.3.5 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.5:3000
+
+ ✓ Starting...
+ ✓ Ready in 587ms
+ ○ Compiling /game ...
+ ✓ Compiled /game in 666ms
+ GET /game 200 in 777ms
+ GET /game 200 in 27ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ✓ Compiled /_error in 314ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.vdmahed5bxr'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.vdmahed5bxr'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.fpo9yay4mp'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.fpo9yay4mp'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.wwavii3dk8'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.wwavii3dk8'
+}
+ ✓ Compiled /favicon.ico in 158ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.c4r4graboun'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.c4r4graboun'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.2ksao0n3gfl'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.2ksao0n3gfl'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.0jkfo089zgqn'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.0jkfo089zgqn'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.ai743911ovu'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.ai743911ovu'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.kxttgi6nqej'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.kxttgi6nqej'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.ms6gs2r3ti'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.ms6gs2r3ti'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.7bk9wmlowy'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.7bk9wmlowy'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.9mkpowc932'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.9mkpowc932'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.2kgjg4ewg45'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.2kgjg4ewg45'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.a8dwalvut9m'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.a8dwalvut9m'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.lzgxqinib2l'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.lzgxqinib2l'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.yrijhiu4sp'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.yrijhiu4sp'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.g1a7f0zrrvq'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.g1a7f0zrrvq'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.5nawnih7hh3'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.5nawnih7hh3'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.jxd9fyvtevm'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.jxd9fyvtevm'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.0sci70kbdg6'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.0sci70kbdg6'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.q1dg684wvhb'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.q1dg684wvhb'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.ude0hgzsxm'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.ude0hgzsxm'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.kidsar7hv5i'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.kidsar7hv5i'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.v96wpoiam6h'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.v96wpoiam6h'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.15lppsdc4rkh'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.15lppsdc4rkh'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.zl7cllrmr9c'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.zl7cllrmr9c'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.bt5y6vpn8of'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.bt5y6vpn8of'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.or3y03deb6p'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.or3y03deb6p'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.46yobzqbcmb'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.46yobzqbcmb'
+}
+[?25h

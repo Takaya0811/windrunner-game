@@ -62,51 +62,74 @@ interface CharacterAnimations {
 }
 
 /**
- * キャラクターのアニメーション値を計算（強化版）
+ * キャラクターのアニメーション値を計算（モダン版 - スムーズ改良）
  */
 const calculateAnimations = (gameSpeed: number, isRunning: boolean): CharacterAnimations => {
   const time = Date.now() * 0.01;
-  const speedMultiplier = Math.max(1, gameSpeed * 0.5); // スピードに応じてアニメーション速度を調整
+  const speedMultiplier = Math.max(1, gameSpeed * 0.6); // より反応性の高い調整
+  
+  // スムーズなイージング関数
+  const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
+  const easeOutBounce = (t: number) => {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  };
   
   return {
-    // まばたき（より自然に）
-    eyeHeight: Math.random() > 0.98 ? 1 : (Math.random() > 0.96 ? 4 : 8),
+    // まばたき（より自然なタイミング）
+    eyeHeight: (() => {
+      const blinkCycle = Math.sin(time * 0.05) + Math.sin(time * 0.02);
+      return Math.random() > (0.98 + blinkCycle * 0.01) ? 
+        (Math.random() > 0.5 ? 1 : 2) : 8;
+    })(),
     
-    // 髪の揺れ（風とスピードに応じて）
-    hairOffset: Math.sin(time * 0.15 * speedMultiplier) * (2 + gameSpeed * 0.5),
+    // 髪の揺れ（複数の波を組み合わせて自然に）
+    hairOffset: isRunning ? 
+      (Math.sin(time * 0.18 * speedMultiplier) * (2 + gameSpeed * 0.4) + 
+       Math.sin(time * 0.25 * speedMultiplier) * 0.8) * 
+       easeInOutSine((Math.sin(time * 0.1) + 1) / 2) :
+      Math.sin(time * 0.08) * 1.2 + Math.sin(time * 0.15) * 0.5,
     
-    // 腕の振り（より大きく、自然に）
+    // 腕の振り（よりリアルな振り子運動）
     armSwing: isRunning ? 
-      Math.sin(time * 0.5 * speedMultiplier) * (4 + gameSpeed * 0.8) : 
-      Math.sin(time * 0.1) * 0.5, // 静止時も微細な動き
+      Math.sin(time * 0.8 * speedMultiplier) * (5 + gameSpeed * 0.9) * 
+      easeInOutSine((Math.sin(time * 0.4) + 1) / 2) : 
+      Math.sin(time * 0.12) * 0.8, // 静止時の自然な揺れ
     
-    // 左足の動き（より動的に）
+    // 左足の動き（よりダイナミック）
     leftLegOffset: isRunning ? 
-      Math.sin(time * 0.6 * speedMultiplier) * (3 + gameSpeed * 0.6) : 
+      Math.sin(time * 0.9 * speedMultiplier) * (4 + gameSpeed * 0.7) * 
+      easeOutBounce(Math.abs(Math.sin(time * 0.45 * speedMultiplier))) : 
       0,
     
-    // 右足の動き（位相をずらしてより自然に）
+    // 右足の動き（左足との協調性を改善）
     rightLegOffset: isRunning ? 
-      Math.sin(time * 0.6 * speedMultiplier + Math.PI) * (3 + gameSpeed * 0.6) : 
+      Math.sin(time * 0.9 * speedMultiplier + Math.PI) * (4 + gameSpeed * 0.7) * 
+      easeOutBounce(Math.abs(Math.sin(time * 0.45 * speedMultiplier + Math.PI))) : 
       0,
     
-    // 体の上下運動（走る時のバウンス）
+    // 体の上下運動（より滑らかなバウンス）
     bodyBounce: isRunning ? 
-      Math.sin(time * 1.2 * speedMultiplier) * (1.5 + gameSpeed * 0.3) : 
-      Math.sin(time * 0.08) * 0.3, // 静止時の呼吸による微細な動き
+      Math.sin(time * 1.8 * speedMultiplier) * (2 + gameSpeed * 0.4) * 
+      easeInOutSine((Math.sin(time * 0.6) + 1) / 2) : 
+      Math.sin(time * 0.1) * 0.5 + Math.sin(time * 0.06) * 0.3, // 呼吸の複合
     
-    // 頭の傾き（走る時の動的な動き）
+    // 頭の傾き（より微細で自然）
     headTilt: isRunning ? 
-      Math.sin(time * 0.4 * speedMultiplier) * (0.05 + gameSpeed * 0.01) : 
-      0,
+      Math.sin(time * 0.6 * speedMultiplier) * (0.08 + gameSpeed * 0.015) * 
+      easeInOutSine((Math.sin(time * 0.3) + 1) / 2) : 
+      Math.sin(time * 0.05) * 0.02,
     
-    // 呼吸による体の動き
-    breathingOffset: Math.sin(time * 0.12) * 0.8,
+    // 呼吸による体の動き（より複雑で自然）
+    breathingOffset: Math.sin(time * 0.15) * 0.6 + 
+                    Math.sin(time * 0.08) * 0.4 + 
+                    Math.sin(time * 0.22) * 0.2,
   };
 };
 
 /**
- * キャラクターを描画する関数（アニメ風デザイン）
+ * キャラクターを描画する関数（モダンデザイン）
  * @param ctx - 描画コンテキスト
  * @param char - キャラクターの情報
  * @param gameSpeed - ゲーム速度
@@ -128,82 +151,186 @@ export const drawCharacter = (
   const headY = baseY - 15 + animations.bodyBounce;
   const headTilt = animations.headTilt;
   
-  // 体のベース（楕円形で自然な体型）
+  // 光源設定（右上から照らす - 将来の機能拡張用）
+  // const lightAngle = Math.PI / 4; // 45度
+  
+  // 体のベース（影から描画）
+  // 体の影
+  ctx.fillStyle = COLORS.SHIRT_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20 + 1, bodyY + 10 + 1, 16, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 体のメイン
   ctx.fillStyle = COLORS.SHIRT_COLOR;
   ctx.beginPath();
   ctx.ellipse(baseX + 20, bodyY + 10, 16, 22, 0, 0, Math.PI * 2);
   ctx.fill();
   
-  // 首
+  // 体のハイライト
+  ctx.fillStyle = COLORS.SHIRT_HIGHLIGHT;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 16, bodyY + 6, 8, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 首（影付き）
+  // 首の影
+  ctx.fillStyle = COLORS.SKIN_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20 + 0.5, bodyY - 8 + 0.5, 6, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 首のメイン
   ctx.fillStyle = COLORS.SKIN_COLOR;
   ctx.beginPath();
   ctx.ellipse(baseX + 20, bodyY - 8, 6, 8, 0, 0, Math.PI * 2);
   ctx.fill();
   
-  // 顔の輪郭（より大きく、アニメ風に）
-  ctx.fillStyle = COLORS.SKIN_COLOR;
+  // 髪の後ろ部分（影から描画）
+  // 髪の影
+  ctx.fillStyle = COLORS.HAIR_SHADOW;
   ctx.beginPath();
-  ctx.ellipse(baseX + 20, headY, 15, 18, headTilt, 0, Math.PI * 2);
+  ctx.ellipse(baseX + 20 + animations.hairOffset + 1, headY + 1, 17, 20, headTilt, 0, Math.PI * 2);
   ctx.fill();
   
-  // 髪の後ろ部分（金髪）
+  // 髪のメイン
   ctx.fillStyle = COLORS.HAIR_COLOR;
   ctx.beginPath();
   ctx.ellipse(baseX + 20 + animations.hairOffset, headY, 17, 20, headTilt, 0, Math.PI * 2);
   ctx.fill();
   
-  // 前髪（風になびく効果）
+  // 髪のハイライト
+  ctx.fillStyle = COLORS.HAIR_HIGHLIGHT;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 16 + animations.hairOffset * 0.7, headY - 3, 8, 10, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 顔の輪郭（影付き）
+  // 顔の影
+  ctx.fillStyle = COLORS.SKIN_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20 + 0.5, headY + 0.5, 15, 18, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 顔のメイン
+  ctx.fillStyle = COLORS.SKIN_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20, headY, 15, 18, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 顔のハイライト
+  ctx.fillStyle = COLORS.SKIN_HIGHLIGHT;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 17, headY - 2, 8, 10, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 前髪（風になびく効果 - 立体感強化）
+  // 前髪の影
+  ctx.fillStyle = COLORS.HAIR_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 20 + animations.hairOffset * 0.5 + 0.5, headY - 10 + 0.5, 12, 8, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 前髪のメイン
   ctx.fillStyle = COLORS.HAIR_COLOR;
   ctx.beginPath();
   ctx.ellipse(baseX + 20 + animations.hairOffset * 0.5, headY - 10, 12, 8, headTilt, 0, Math.PI * 2);
   ctx.fill();
   
-  // サイドの髪
+  // 前髪のハイライト
+  ctx.fillStyle = COLORS.HAIR_HIGHLIGHT;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 18 + animations.hairOffset * 0.3, headY - 12, 6, 4, headTilt, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // サイドの髪（立体感強化）
+  // 左サイド
+  ctx.fillStyle = COLORS.HAIR_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 8 + animations.hairOffset + 0.5, headY - 3 + 0.5, 6, 12, headTilt * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = COLORS.HAIR_COLOR;
   ctx.beginPath();
   ctx.ellipse(baseX + 8 + animations.hairOffset, headY - 3, 6, 12, headTilt * 0.5, 0, Math.PI * 2);
   ctx.fill();
+  
+  // 右サイド
+  ctx.fillStyle = COLORS.HAIR_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(baseX + 32 + animations.hairOffset + 0.5, headY - 3 + 0.5, 6, 12, headTilt * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = COLORS.HAIR_COLOR;
   ctx.beginPath();
   ctx.ellipse(baseX + 32 + animations.hairOffset, headY - 3, 6, 12, headTilt * 0.5, 0, Math.PI * 2);
   ctx.fill();
   
-  // 目の形（アニメ風の大きな目）
+  // 目の形（モダンアニメスタイル）
   const eyeY = headY - 3;
-  ctx.fillStyle = COLORS.WHITE;
   if (animations.eyeHeight > 2) {
-    // 左目
+    // 目の影（まぶた）
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.beginPath();
+    ctx.ellipse(baseX + 14, eyeY - 1, 4.5, animations.eyeHeight * 0.7, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 26, eyeY - 1, 4.5, animations.eyeHeight * 0.7, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 目の白い部分
+    ctx.fillStyle = COLORS.WHITE;
     ctx.beginPath();
     ctx.ellipse(baseX + 14, eyeY, 4, animations.eyeHeight * 0.6, headTilt * 0.3, 0, Math.PI * 2);
     ctx.fill();
-    // 右目
     ctx.beginPath();
     ctx.ellipse(baseX + 26, eyeY, 4, animations.eyeHeight * 0.6, headTilt * 0.3, 0, Math.PI * 2);
     ctx.fill();
     
-    // 瞳（青い目）
+    // 虹彩のグラデーション効果
+    // 外側の虹彩
     ctx.fillStyle = COLORS.EYE_COLOR;
     ctx.beginPath();
-    ctx.ellipse(baseX + 14, eyeY, 3, animations.eyeHeight * 0.4, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 14, eyeY, 3.2, animations.eyeHeight * 0.45, headTilt * 0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 26, eyeY, 3, animations.eyeHeight * 0.4, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 26, eyeY, 3.2, animations.eyeHeight * 0.45, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 虹彩のハイライト
+    ctx.fillStyle = COLORS.EYE_HIGHLIGHT;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 14, eyeY, 2.5, animations.eyeHeight * 0.35, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 26, eyeY, 2.5, animations.eyeHeight * 0.35, headTilt * 0.3, 0, Math.PI * 2);
     ctx.fill();
     
     // 瞳孔
     ctx.fillStyle = COLORS.BLACK;
     ctx.beginPath();
-    ctx.ellipse(baseX + 14, eyeY, 1.5, animations.eyeHeight * 0.2, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 14, eyeY, 1.8, animations.eyeHeight * 0.25, headTilt * 0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 26, eyeY, 1.5, animations.eyeHeight * 0.2, headTilt * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 26, eyeY, 1.8, animations.eyeHeight * 0.25, headTilt * 0.3, 0, Math.PI * 2);
     ctx.fill();
     
-    // 目の輝き
+    // メインハイライト（より大きく）
     ctx.fillStyle = COLORS.WHITE;
     ctx.beginPath();
-    ctx.arc(baseX + 15, eyeY - 1, 1, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 15, eyeY - 1, 1.2, 1.8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(baseX + 27, eyeY - 1, 1, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 27, eyeY - 1, 1.2, 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // セカンダリハイライト
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.beginPath();
+    ctx.arc(baseX + 13, eyeY + 1, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(baseX + 25, eyeY + 1, 0.6, 0, Math.PI * 2);
     ctx.fill();
   } else {
     // まばたき時は線だけ
