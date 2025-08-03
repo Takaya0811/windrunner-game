@@ -62,69 +62,51 @@ interface CharacterAnimations {
 }
 
 /**
- * キャラクターのアニメーション値を計算（モダン版 - スムーズ改良）
+ * キャラクターのアニメーション値を計算（修正版 - 自然な動き）
  */
 const calculateAnimations = (gameSpeed: number, isRunning: boolean): CharacterAnimations => {
   const time = Date.now() * 0.01;
-  const speedMultiplier = Math.max(1, gameSpeed * 0.6); // より反応性の高い調整
+  const runSpeed = Math.max(1, gameSpeed * 0.3); // より控えめな速度調整
   
-  // スムーズなイージング関数
-  const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
-  const easeOutBounce = (t: number) => {
-    const c1 = 1.70158;
-    const c3 = c1 + 1;
-    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-  };
+  // シンプルで自然なイージング（将来用）
+  // const smoothStep = (t: number) => t * t * (3 - 2 * t);
   
   return {
-    // まばたき（より自然なタイミング）
-    eyeHeight: (() => {
-      const blinkCycle = Math.sin(time * 0.05) + Math.sin(time * 0.02);
-      return Math.random() > (0.98 + blinkCycle * 0.01) ? 
-        (Math.random() > 0.5 ? 1 : 2) : 8;
-    })(),
+    // まばたき（シンプルに）
+    eyeHeight: Math.random() > 0.98 ? (Math.random() > 0.7 ? 1 : 2) : 8,
     
-    // 髪の揺れ（複数の波を組み合わせて自然に）
+    // 髪の揺れ（控えめに）
     hairOffset: isRunning ? 
-      (Math.sin(time * 0.18 * speedMultiplier) * (2 + gameSpeed * 0.4) + 
-       Math.sin(time * 0.25 * speedMultiplier) * 0.8) * 
-       easeInOutSine((Math.sin(time * 0.1) + 1) / 2) :
-      Math.sin(time * 0.08) * 1.2 + Math.sin(time * 0.15) * 0.5,
+      Math.sin(time * 0.15 * runSpeed) * (1.5 + gameSpeed * 0.2) :
+      Math.sin(time * 0.08) * 0.8,
     
-    // 腕の振り（よりリアルな振り子運動）
+    // 腕の振り（自然な前後振り）
     armSwing: isRunning ? 
-      Math.sin(time * 0.8 * speedMultiplier) * (5 + gameSpeed * 0.9) * 
-      easeInOutSine((Math.sin(time * 0.4) + 1) / 2) : 
-      Math.sin(time * 0.12) * 0.8, // 静止時の自然な揺れ
+      Math.sin(time * 0.35 * runSpeed) * (1.8 + gameSpeed * 0.2) : 
+      Math.sin(time * 0.08) * 0.2,
     
-    // 左足の動き（よりダイナミック）
+    // 左足の動き（自然な歩行サイクル）
     leftLegOffset: isRunning ? 
-      Math.sin(time * 0.9 * speedMultiplier) * (4 + gameSpeed * 0.7) * 
-      easeOutBounce(Math.abs(Math.sin(time * 0.45 * speedMultiplier))) : 
+      Math.sin(time * 0.35 * runSpeed) * (1.5 + gameSpeed * 0.15) : 
       0,
     
-    // 右足の動き（左足との協調性を改善）
+    // 右足の動き（左足と逆位相、自然な歩行）
     rightLegOffset: isRunning ? 
-      Math.sin(time * 0.9 * speedMultiplier + Math.PI) * (4 + gameSpeed * 0.7) * 
-      easeOutBounce(Math.abs(Math.sin(time * 0.45 * speedMultiplier + Math.PI))) : 
+      Math.sin(time * 0.35 * runSpeed + Math.PI) * (1.5 + gameSpeed * 0.15) : 
       0,
     
-    // 体の上下運動（より滑らかなバウンス）
+    // 体の上下運動（控えめに）
     bodyBounce: isRunning ? 
-      Math.sin(time * 1.8 * speedMultiplier) * (2 + gameSpeed * 0.4) * 
-      easeInOutSine((Math.sin(time * 0.6) + 1) / 2) : 
-      Math.sin(time * 0.1) * 0.5 + Math.sin(time * 0.06) * 0.3, // 呼吸の複合
+      Math.abs(Math.sin(time * 0.8 * runSpeed)) * (1 + gameSpeed * 0.1) : 
+      Math.sin(time * 0.1) * 0.3,
     
-    // 頭の傾き（より微細で自然）
+    // 頭の傾き（微細に）
     headTilt: isRunning ? 
-      Math.sin(time * 0.6 * speedMultiplier) * (0.08 + gameSpeed * 0.015) * 
-      easeInOutSine((Math.sin(time * 0.3) + 1) / 2) : 
-      Math.sin(time * 0.05) * 0.02,
+      Math.sin(time * 0.3 * runSpeed) * 0.04 : 
+      Math.sin(time * 0.05) * 0.01,
     
-    // 呼吸による体の動き（より複雑で自然）
-    breathingOffset: Math.sin(time * 0.15) * 0.6 + 
-                    Math.sin(time * 0.08) * 0.4 + 
-                    Math.sin(time * 0.22) * 0.2,
+    // 呼吸による体の動き（穏やかに）
+    breathingOffset: Math.sin(time * 0.12) * 0.4 + Math.sin(time * 0.08) * 0.2,
   };
 };
 
@@ -146,9 +128,9 @@ export const drawCharacter = (
   // アニメーション値を計算
   const animations = calculateAnimations(gameSpeed, isRunning);
   
-  // アニメーションによる位置調整
-  const bodyY = baseY + animations.bodyBounce + animations.breathingOffset;
-  const headY = baseY - 15 + animations.bodyBounce;
+  // アニメーションによる位置調整（修正版）
+  const bodyY = baseY + animations.breathingOffset;
+  const headY = baseY - 20 + animations.bodyBounce * 0.3; // 頭部の独立した動き
   const headTilt = animations.headTilt;
   
   // 光源設定（右上から照らす - 将来の機能拡張用）
@@ -385,113 +367,149 @@ export const drawCharacter = (
     ctx.fillRect(baseX + 12, bodyY + 8 + i * 6, 16, 2);
   }
   
-  // 腕（アニメ風の滑らかな形）
+  // 腕（自然な振り修正版）
   ctx.fillStyle = COLORS.SKIN_COLOR;
   if (char.isJumping) {
     // ジャンプ中は腕を上に
     ctx.beginPath();
-    ctx.ellipse(baseX + 2, bodyY + 12, 4, 12, Math.PI * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 6, bodyY + 8, 4, 12, Math.PI * 0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 38, bodyY + 12, 4, 12, -Math.PI * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 34, bodyY + 8, 4, 12, -Math.PI * 0.3, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    // 走り中は腕を振る（より大きな動き）
-    const leftArmY = bodyY + 15 + animations.armSwing + animations.bodyBounce * 0.3;
-    const rightArmY = bodyY + 15 - animations.armSwing + animations.bodyBounce * 0.3;
+    // 走り中は腕を自然に前後に振る
+    const armBaseY = bodyY + 12 + animations.bodyBounce * 0.3;
+    const leftArmX = baseX + 6 + animations.armSwing * 0.7; // 控えめな前後移動
+    const rightArmX = baseX + 34 - animations.armSwing * 0.7; // 逆位相
+    const leftArmY = armBaseY + animations.armSwing * 0.3; // 軽い上下
+    const rightArmY = armBaseY - animations.armSwing * 0.3; // 逆の上下
+    const leftArmAngle = animations.armSwing * 0.08; // より自然な回転
+    const rightArmAngle = -animations.armSwing * 0.08;
+    
     ctx.beginPath();
-    ctx.ellipse(baseX + 2, leftArmY, 4, 12, animations.armSwing * 0.02, 0, Math.PI * 2);
+    ctx.ellipse(leftArmX, leftArmY, 4, 12, leftArmAngle, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 38, rightArmY, 4, 12, -animations.armSwing * 0.02, 0, Math.PI * 2);
+    ctx.ellipse(rightArmX, rightArmY, 4, 12, rightArmAngle, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // 手（グローブ風）
+  // 手（グローブ風修正版）
   ctx.fillStyle = COLORS.WHITE;
   if (char.isJumping) {
     ctx.beginPath();
-    ctx.arc(baseX + 2, bodyY + 22, 3, 0, Math.PI * 2);
+    ctx.arc(baseX + 6, bodyY + 18, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(baseX + 38, bodyY + 22, 3, 0, Math.PI * 2);
+    ctx.arc(baseX + 34, bodyY + 18, 3, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    const leftHandY = bodyY + 25 + animations.armSwing + animations.bodyBounce * 0.3;
-    const rightHandY = bodyY + 25 - animations.armSwing + animations.bodyBounce * 0.3;
+    const handBaseY = bodyY + 22 + animations.bodyBounce * 0.3;
+    const leftHandX = baseX + 6 + animations.armSwing * 0.8; // 腕に合わせた自然な動き
+    const rightHandX = baseX + 34 - animations.armSwing * 0.8;
+    const leftHandY = handBaseY + animations.armSwing * 0.4; // 腕の上下に合わせる
+    const rightHandY = handBaseY - animations.armSwing * 0.4;
     ctx.beginPath();
-    ctx.arc(baseX + 2, leftHandY, 3, 0, Math.PI * 2);
+    ctx.arc(leftHandX, leftHandY, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(baseX + 38, rightHandY, 3, 0, Math.PI * 2);
+    ctx.arc(rightHandX, rightHandY, 3, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // スポーツパンツ（ショートパンツ風）
+  // スポーツパンツ（ショートパンツ風修正版）
   ctx.fillStyle = COLORS.PANTS_COLOR;
   if (char.isJumping) {
     ctx.beginPath();
-    ctx.ellipse(baseX + 12, bodyY + 40, 6, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 12, bodyY + 35, 6, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 28, bodyY + 40, 6, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 28, bodyY + 35, 6, 8, 0, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    // 走り中は足を交互に動かす（より動的に）
-    const leftLegY = bodyY + 40 + animations.leftLegOffset + animations.bodyBounce * 0.2;
-    const rightLegY = bodyY + 40 + animations.rightLegOffset + animations.bodyBounce * 0.2;
+    // 走り中は足を自然に動かす（自然な歩行サイクル）
+    const legBaseY = bodyY + 35 + animations.bodyBounce * 0.2;
+    const leftLegX = baseX + 12 + animations.leftLegOffset * 0.3; // より控えめな前後移動
+    const rightLegX = baseX + 28 + animations.rightLegOffset * 0.3;
+    const leftLegY = legBaseY + Math.abs(animations.leftLegOffset) * 0.2; // より自然な上下
+    const rightLegY = legBaseY + Math.abs(animations.rightLegOffset) * 0.2;
+    const leftLegAngle = animations.leftLegOffset * 0.06; // より自然な回転
+    const rightLegAngle = animations.rightLegOffset * 0.06;
+    
     ctx.beginPath();
-    ctx.ellipse(baseX + 12, leftLegY, 6, 12, animations.leftLegOffset * 0.01, 0, Math.PI * 2);
+    ctx.ellipse(leftLegX, leftLegY, 6, 12, leftLegAngle, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 28, rightLegY, 6, 12, animations.rightLegOffset * 0.01, 0, Math.PI * 2);
+    ctx.ellipse(rightLegX, rightLegY, 6, 12, rightLegAngle, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // 足（素肌部分）
+  // 足（素肌部分修正版）
   ctx.fillStyle = COLORS.SKIN_COLOR;
   if (char.isJumping) {
     ctx.beginPath();
-    ctx.ellipse(baseX + 12, bodyY + 52, 4, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 12, bodyY + 47, 4, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 28, bodyY + 52, 4, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(baseX + 28, bodyY + 47, 4, 8, 0, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    const leftLegY = bodyY + 52 + animations.leftLegOffset + animations.bodyBounce * 0.2;
-    const rightLegY = bodyY + 52 + animations.rightLegOffset + animations.bodyBounce * 0.2;
+    const feetBaseY = bodyY + 47 + animations.bodyBounce * 0.2;
+    const leftFootX = baseX + 12 + animations.leftLegOffset * 0.3;
+    const rightFootX = baseX + 28 + animations.rightLegOffset * 0.3;
+    const leftFootY = feetBaseY + Math.abs(animations.leftLegOffset) * 0.2;
+    const rightFootY = feetBaseY + Math.abs(animations.rightLegOffset) * 0.2;
+    
     ctx.beginPath();
-    ctx.ellipse(baseX + 12, leftLegY, 4, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(leftFootX, leftFootY, 4, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(baseX + 28, rightLegY, 4, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(rightFootX, rightFootY, 4, 8, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // スニーカー（白いスポーツシューズ）
+  // スニーカー（白いスポーツシューズ修正版）
   ctx.fillStyle = COLORS.SHOES_COLOR;
-  const leftShoeY = char.isJumping ? 
-    bodyY + 58 : 
-    bodyY + 58 + animations.leftLegOffset + animations.bodyBounce * 0.2;
-  const rightShoeY = char.isJumping ? 
-    bodyY + 58 : 
-    bodyY + 58 + animations.rightLegOffset + animations.bodyBounce * 0.2;
-  
-  ctx.beginPath();
-  ctx.ellipse(baseX + 12, leftShoeY, 8, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(baseX + 28, rightShoeY, 8, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // スニーカーのアクセント
-  ctx.fillStyle = COLORS.SHOE_ACCENT;
-  ctx.beginPath();
-  ctx.ellipse(baseX + 12, leftShoeY - 1, 6, 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(baseX + 28, rightShoeY - 1, 6, 2, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (char.isJumping) {
+    ctx.beginPath();
+    ctx.ellipse(baseX + 12, bodyY + 53, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 28, bodyY + 53, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // スニーカーのアクセント
+    ctx.fillStyle = COLORS.SHOE_ACCENT;
+    ctx.beginPath();
+    ctx.ellipse(baseX + 12, bodyY + 52, 6, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(baseX + 28, bodyY + 52, 6, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const shoeBaseY = bodyY + 53 + animations.bodyBounce * 0.2;
+    const leftShoeX = baseX + 12 + animations.leftLegOffset * 0.3;
+    const rightShoeX = baseX + 28 + animations.rightLegOffset * 0.3;
+    const leftShoeY = shoeBaseY + Math.abs(animations.leftLegOffset) * 0.2;
+    const rightShoeY = shoeBaseY + Math.abs(animations.rightLegOffset) * 0.2;
+    
+    ctx.beginPath();
+    ctx.ellipse(leftShoeX, leftShoeY, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(rightShoeX, rightShoeY, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // スニーカーのアクセント
+    ctx.fillStyle = COLORS.SHOE_ACCENT;
+    ctx.beginPath();
+    ctx.ellipse(leftShoeX, leftShoeY - 1, 6, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(rightShoeX, rightShoeY - 1, 6, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   
   // 影（より自然に）
   ctx.fillStyle = COLORS.SHADOW_COLOR;

@@ -63,10 +63,10 @@ export const COLORS = {
   SKY_MIDDLE: '#B0E0E6',
   SKY_BOTTOM: '#F0F8FF',
   
-  // キャラクターの色（モダンパレット）
-  SKIN_COLOR: '#FFDBAC',        // より自然な肌色
-  SKIN_SHADOW: '#E8C4A0',       // 肌の影
-  SKIN_HIGHLIGHT: '#FFF2E6',    // 肌のハイライト
+  // キャラクターの色（自然な肌色パレット）
+  SKIN_COLOR: '#FDBCB4',        // 自然なピンクベージュ肌色
+  SKIN_SHADOW: '#E8A298',       // 肌の影
+  SKIN_HIGHLIGHT: '#FFF0F0',    // 肌のハイライト
   
   HAIR_COLOR: '#F4D03F',        // 洗練された金髪
   HAIR_SHADOW: '#D4AC0D',       // 髪の影

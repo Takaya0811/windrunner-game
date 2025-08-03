@@ -1,0 +1,47 @@
+
+> windrunner-game@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.3.5 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.3:3000
+
+ ✓ Starting...
+ ✓ Ready in 576ms
+ ○ Compiling /game ...
+ ✓ Compiled /game in 677ms
+ GET /game 200 in 777ms
+ GET /game 200 in 49ms
+ GET /game 200 in 42ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ✓ Compiled /_error in 323ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.4f249hi2s89'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.4f249hi2s89'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/server/app/game/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.2y182jzy3rx'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.2y182jzy3rx'
+}
+[Error: ENOENT: no such file or directory, open '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.20fjh7o6mil'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/yoshikawatakashinari/sandbox/windrunner-game/.next/static/development/_buildManifest.js.tmp.20fjh7o6mil'
+}
+[?25h

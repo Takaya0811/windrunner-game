@@ -1,0 +1,15 @@
+
+> windrunner-game@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.3.5 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.3:3000
+
+ ✓ Starting...
+ ✓ Ready in 538ms
+ ○ Compiling /game ...
+ ✓ Compiled /game in 662ms
+ GET /game 200 in 759ms
+ GET /game 200 in 49ms
+ GET /game 200 in 44ms
