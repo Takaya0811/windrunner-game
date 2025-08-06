@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { useGameLoop } from '@/hooks/useGameLoop';
+import { useRunnerGameLoop } from '@/hooks/useRunnerGameLoop';
 import { useGameState } from '@/hooks/useGameState';
 
 export default function GamePage() {
@@ -55,8 +55,8 @@ export default function GamePage() {
     };
   }, [])
 
-  // ゲームループ（カスタムフックで最適化）
-  useGameLoop({
+  // ランナーゲームループ（キャラクター移動版）
+  useRunnerGameLoop({
     gameStarted,
     gameOver,
     canvasRef,

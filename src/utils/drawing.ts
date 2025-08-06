@@ -872,6 +872,282 @@ const drawForeground = (ctx: CanvasRenderingContext2D, offset: number) => {
  * 
  * 注意: 第4引数backgroundCalcsは旧式互換性のために残していますが、新しいパララックス実装では使用されません
  */
+/**
+ * 固定背景を描画（ランナーゲーム用）
+ * @param ctx - 描画コンテキスト
+ * @param cameraX - カメラのX位置
+ */
+export const drawStaticBackground = (
+  ctx: CanvasRenderingContext2D, 
+  cameraX: number
+) => {
+  // 固定背景を描画（カメラ位置に依存しない）
+  drawStaticFarBackground(ctx);
+  drawStaticMidBackground(ctx, cameraX);
+  drawStaticNearBackground(ctx, cameraX);
+  drawStaticForeground(ctx, cameraX);
+  
+  // テキスト描画のリセット
+  ctx.textAlign = 'left';
+};
+
+/**
+ * 固定遠景レイヤーを描画
+ */
+const drawStaticFarBackground = (ctx: CanvasRenderingContext2D) => {
+  // 空のグラデーション（固定）
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
+  skyGradient.addColorStop(0, '#87CEEB');
+  skyGradient.addColorStop(0.7, '#B0E0E6');
+  skyGradient.addColorStop(1, '#F0F8FF');
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(-2000, 0, 6000, 300); // 大きな範囲を描画
+
+  // 固定の山々
+  ctx.fillStyle = '#9370DB';
+  for (let i = -3; i <= 10; i++) {
+    const baseX = i * 400;
+    ctx.beginPath();
+    ctx.moveTo(baseX, 200);
+    ctx.lineTo(baseX + 150, 150);
+    ctx.lineTo(baseX + 300, 180);
+    ctx.lineTo(baseX + 450, 140);
+    ctx.lineTo(baseX + 600, 170);
+    ctx.lineTo(baseX + 800, 160);
+    ctx.lineTo(baseX + 800, 300);
+    ctx.lineTo(baseX, 300);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 固定の雲
+  ctx.fillStyle = COLORS.WHITE;
+  for (let i = -2; i <= 12; i++) {
+    const cloudX = i * 300 + 50;
+    const cloudY = 60 + Math.sin(i * 0.3) * 20;
+    
+    // 雲の描画
+    ctx.beginPath();
+    ctx.arc(cloudX, cloudY, 15, 0, Math.PI * 2);
+    ctx.arc(cloudX + 20, cloudY, 20, 0, Math.PI * 2);
+    ctx.arc(cloudX + 40, cloudY, 15, 0, Math.PI * 2);
+    ctx.arc(cloudX + 20, cloudY - 15, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+};
+
+/**
+ * 建物パターンの定義（無限背景用）
+ */
+const BUILDING_PATTERNS = [
+  { type: 'church', y: 220, width: 60, height: 80 },
+  { type: 'castle', y: 240, width: 80, height: 60 },
+  { type: 'house', y: 250, width: 50, height: 50 },
+  { type: 'windmill', y: 240, width: 40, height: 60 },
+  { type: 'market', y: 260, width: 50, height: 40 },
+];
+
+/**
+ * 建物の間隔（ピクセル）
+ */
+const BUILDING_SPACING = 200;
+
+/**
+ * 無限中景レイヤーを描画
+ */
+const drawStaticMidBackground = (ctx: CanvasRenderingContext2D, cameraX: number) => {
+  // 画面範囲を計算（余裕を持たせる）
+  const leftBound = cameraX - 200;
+  const rightBound = cameraX + GAME_CONFIG.CANVAS_WIDTH + 200;
+  
+  // 最初の建物のインデックスを計算
+  const firstBuildingIndex = Math.floor(leftBound / BUILDING_SPACING);
+  const lastBuildingIndex = Math.ceil(rightBound / BUILDING_SPACING);
+  
+  // 必要な範囲の建物のみ描画
+  for (let i = firstBuildingIndex; i <= lastBuildingIndex; i++) {
+    const buildingX = i * BUILDING_SPACING;
+    
+    // 画面範囲内にある場合のみ描画
+    if (buildingX >= leftBound && buildingX <= rightBound) {
+      // パターンをループさせる（モジュロ演算）
+      const patternIndex = ((i % BUILDING_PATTERNS.length) + BUILDING_PATTERNS.length) % BUILDING_PATTERNS.length;
+      const pattern = BUILDING_PATTERNS[patternIndex];
+      
+      const building = {
+        x: buildingX,
+        y: pattern.y,
+        width: pattern.width,
+        height: pattern.height,
+        type: pattern.type
+      };
+      
+      // 建物を描画
+      drawBuilding(ctx, building);
+    }
+  }
+};
+
+/**
+ * 建物の型定義
+ */
+interface Building {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: string;
+}
+
+/**
+ * 建物を描画する共通関数
+ */
+const drawBuilding = (ctx: CanvasRenderingContext2D, building: Building) => {
+  switch (building.type) {
+    case 'church':
+      ctx.fillStyle = '#D2691E';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.moveTo(building.x, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 30);
+      ctx.lineTo(building.x + building.width, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'castle':
+      ctx.fillStyle = '#696969';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      ctx.fillStyle = '#2F4F4F';
+      ctx.fillRect(building.x + 10, building.y - 20, 15, 20);
+      ctx.fillRect(building.x + 35, building.y - 15, 15, 15);
+      ctx.fillRect(building.x + 55, building.y - 25, 15, 25);
+      break;
+      
+    case 'house':
+      ctx.fillStyle = '#DEB887';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.moveTo(building.x, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 20);
+      ctx.lineTo(building.x + building.width, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'windmill':
+      ctx.fillStyle = '#F5DEB3';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      ctx.strokeStyle = '#8B4513';
+      ctx.lineWidth = 3;
+      const centerX = building.x + building.width/2;
+      const centerY = building.y + 15;
+      for (let j = 0; j < 4; j++) {
+        const angle = j * Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + Math.cos(angle) * 25, centerY + Math.sin(angle) * 25);
+        ctx.stroke();
+      }
+      break;
+      
+    case 'market':
+      ctx.fillStyle = '#CD853F';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.moveTo(building.x, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 15);
+      ctx.lineTo(building.x + building.width, building.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#FF6B35';
+      ctx.fillRect(building.x + 5, building.y + 10, 8, 5);
+      ctx.fillRect(building.x + 20, building.y + 10, 8, 5);
+      ctx.fillRect(building.x + 32, building.y + 10, 8, 5);
+      break;
+      
+    default:
+      ctx.fillStyle = '#D2691E';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+  }
+};
+
+/**
+ * 固定近景レイヤーを描画
+ */
+const drawStaticNearBackground = (ctx: CanvasRenderingContext2D, cameraX: number) => {
+  // 草
+  ctx.fillStyle = COLORS.GRASS_COLOR;
+  for (let i = 0; i < 200; i++) {
+    const grassX = i * 40;
+    const grassY = 375 + Math.sin(i * 0.5) * 3;
+    
+    if (grassX > cameraX - 50 && grassX < cameraX + GAME_CONFIG.CANVAS_WIDTH + 50) {
+      ctx.fillRect(grassX, grassY, 2, GROUND_LAYERS.GRASS_HEIGHT);
+      ctx.fillRect(grassX - 1, grassY + 2, 1, 4);
+      ctx.fillRect(grassX + 2, grassY + 1, 1, 5);
+    }
+  }
+
+  // 小石
+  ctx.fillStyle = COLORS.STONE_COLOR;
+  for (let i = 0; i < 150; i++) {
+    const stoneX = i * 53;
+    const stoneY = 370 + Math.sin(i * 0.7) * 8;
+    
+    if (stoneX > cameraX - 50 && stoneX < cameraX + GAME_CONFIG.CANVAS_WIDTH + 50) {
+      ctx.beginPath();
+      ctx.arc(stoneX, stoneY, 2 + Math.sin(i) * 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+};
+
+/**
+ * 固定前景レイヤーを描画
+ */
+const drawStaticForeground = (ctx: CanvasRenderingContext2D, cameraX: number) => {
+  // 道路基盤（大きな範囲を描画）
+  ctx.fillStyle = GROUND_LAYERS.ROAD_COLOR;
+  ctx.fillRect(cameraX - 100, GROUND_LAYERS.ROAD_Y, GAME_CONFIG.CANVAS_WIDTH + 200, GROUND_LAYERS.ROAD_HEIGHT);
+  
+  // レンガのパターン
+  ctx.strokeStyle = COLORS.GROUND_LINE_COLOR;
+  ctx.lineWidth = 2;
+  
+  // 横の線
+  for (let y = GROUND_LAYERS.ROAD_Y + 20; y < GROUND_LAYERS.ROAD_Y + GROUND_LAYERS.ROAD_HEIGHT; y += GROUND_LAYERS.BRICK_HEIGHT) {
+    ctx.beginPath();
+    ctx.moveTo(cameraX - 100, y);
+    ctx.lineTo(cameraX + GAME_CONFIG.CANVAS_WIDTH + 100, y);
+    ctx.stroke();
+  }
+  
+  // 縦の線（レンガパターン）
+  const brickRows = Math.floor(GROUND_LAYERS.ROAD_HEIGHT / GROUND_LAYERS.BRICK_HEIGHT);
+  for (let row = 0; row < brickRows; row++) {
+    const yPos = GROUND_LAYERS.ROAD_Y + 20 + row * GROUND_LAYERS.BRICK_HEIGHT;
+    const brickOffset = (row % 2) * (GROUND_LAYERS.BRICK_WIDTH / 2);
+    
+    const startX = Math.floor((cameraX - 100) / GROUND_LAYERS.BRICK_WIDTH) * GROUND_LAYERS.BRICK_WIDTH + brickOffset;
+    const endX = cameraX + GAME_CONFIG.CANVAS_WIDTH + 100;
+    
+    for (let x = startX; x < endX; x += GROUND_LAYERS.BRICK_WIDTH) {
+      ctx.beginPath();
+      ctx.moveTo(x, yPos);
+      ctx.lineTo(x, yPos + GROUND_LAYERS.BRICK_HEIGHT);
+      ctx.stroke();
+    }
+  }
+};
+
+
+/**
+ * スクロール版背景描画（互換性維持）
+ */
 export const drawBackground = (
   ctx: CanvasRenderingContext2D, 
   score: number, 
