@@ -131,15 +131,72 @@ export const useGameLoop = (params: UseGameLoopParams) => {
       const lastObstacle = newObstacles[newObstacles.length - 1];
       if (Math.random() < GAME_CONFIG.OBSTACLE_SPAWN_RATE && 
           (!lastObstacle || (GAME_CONFIG.CANVAS_WIDTH - lastObstacle.x) > GAME_CONFIG.OBSTACLE_MIN_DISTANCE)) {
-        const type = Math.random() < GAME_CONFIG.CACTUS_SPAWN_RATE ? 'cactus' : 'bird';
-        newObstacles.push({
+        const type = Math.random() < GAME_CONFIG.SPIKE_SPAWN_RATE ? 'spike' : 'bird';
+        const obstacle: Obstacle = {
           x: GAME_CONFIG.CANVAS_WIDTH,
-          y: type === 'cactus' ? GAME_CONFIG.CACTUS_Y : GAME_CONFIG.BIRD_Y,
-          width: type === 'cactus' ? GAME_CONFIG.CACTUS_WIDTH : GAME_CONFIG.BIRD_WIDTH,
-          height: type === 'cactus' ? GAME_CONFIG.CACTUS_HEIGHT : GAME_CONFIG.BIRD_HEIGHT,
+          y: type === 'spike' ? GAME_CONFIG.SPIKE_Y : GAME_CONFIG.BIRD_Y,
+          width: type === 'spike' ? GAME_CONFIG.SPIKE_WIDTH : GAME_CONFIG.BIRD_WIDTH,
+          height: type === 'spike' ? GAME_CONFIG.SPIKE_HEIGHT : GAME_CONFIG.BIRD_HEIGHT,
           type: type
-        });
+        };
+        
+        // 鳥の場合は動作用のパラメータを追加
+        if (type === 'bird') {
+          obstacle.baseY = GAME_CONFIG.BIRD_Y;
+          obstacle.animationTime = 0;
+          obstacle.velocityX = 0; // 初期の横方向速度
+          obstacle.velocityY = 0; // 初期の縦方向速度
+        }
+        
+        newObstacles.push(obstacle);
       }
+      
+      // 鳥の上下動作とプレイヤー追跡を更新
+      newObstacles = newObstacles.map(obs => {
+        if (obs.type === 'bird' && obs.baseY !== undefined && obs.animationTime !== undefined) {
+          // アニメーション時間を更新
+          obs.animationTime += GAME_CONFIG.BIRD_MOVEMENT_SPEED;
+          
+          // プレイヤー追跡ロジック（プレイヤーが近くにいる場合のみ）
+          if (characterRef.current && obs.velocityX !== undefined && obs.velocityY !== undefined) {
+            const distanceToPlayer = Math.abs(characterRef.current.x - obs.x);
+            
+            if (distanceToPlayer < GAME_CONFIG.BIRD_TRACKING_RANGE) {
+              // プレイヤー方向への軽い追跡
+              const targetX = characterRef.current.x;
+              const targetY = characterRef.current.y;
+              
+              const deltaX = targetX - obs.x;
+              const deltaY = targetY - obs.y;
+              
+              // 軽い追跡力を加算（ゆっくりと寄ってくる）
+              obs.velocityX += deltaX * GAME_CONFIG.BIRD_TRACKING_SPEED * 0.001;
+              obs.velocityY += deltaY * GAME_CONFIG.BIRD_TRACKING_SPEED * 0.001;
+              
+              // 速度の上限を設定（暴走を防ぐ）
+              const maxVelocity = 1.5;
+              obs.velocityX = Math.max(-maxVelocity, Math.min(maxVelocity, obs.velocityX));
+              obs.velocityY = Math.max(-maxVelocity, Math.min(maxVelocity, obs.velocityY));
+            }
+          }
+          
+          // 基本的な上下動作（サイン波）と追跡を組み合わせ
+          const baseMovement = Math.sin(obs.animationTime) * (GAME_CONFIG.BIRD_MOVEMENT_RANGE / 2);
+          const trackingMovement = obs.velocityY || 0;
+          
+          // 基準位置から基本動作+追跡動作を適用
+          obs.y = obs.baseY + baseMovement + trackingMovement;
+          
+          // 横方向の追跡も適用
+          if (obs.velocityX !== undefined) {
+            obs.x += obs.velocityX;
+          }
+          
+          // 画面の境界内に制限
+          obs.y = Math.max(50, Math.min(350, obs.y));
+        }
+        return obs;
+      });
       
       // 障害物の移動（画面外に出たものは削除）
       newObstacles = newObstacles.filter(obs => {

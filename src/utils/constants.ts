@@ -33,17 +33,21 @@ export const GAME_CONFIG = {
   // 障害物の設定
   OBSTACLE_MIN_DISTANCE: 280,  // 障害物間の最小距離
   OBSTACLE_SPAWN_RATE: 0.012,  // 障害物の生成確率
-  CACTUS_SPAWN_RATE: 0.6,      // サボテンの生成確率（残りは鳥）
+  SPIKE_SPAWN_RATE: 0.6,       // 金属スパイクの生成確率（残りは鳥）
   
-  // サボテンの設定
-  CACTUS_WIDTH: 20,
-  CACTUS_HEIGHT: 50,
-  CACTUS_Y: 330,
+  // 金属スパイクの設定
+  SPIKE_WIDTH: 30,
+  SPIKE_HEIGHT: 50,
+  SPIKE_Y: 330,
   
   // 鳥の設定
   BIRD_WIDTH: 30,
   BIRD_HEIGHT: 20,
   BIRD_Y: 250,
+  BIRD_MOVEMENT_RANGE: 40,    // 鳥の上下動作範囲（ピクセル）
+  BIRD_MOVEMENT_SPEED: 0.1,   // 鳥の上下動作速度（1秒で1往復）
+  BIRD_TRACKING_RANGE: 300,   // プレイヤーを追跡する距離（ピクセル）
+  BIRD_TRACKING_SPEED: 0.5,   // プレイヤー追跡速度（軽く寄ってくる程度）
   
   // 収集アイテムの設定
   COLLECTIBLE_SPAWN_RATE: 0.008,  // アイテムの生成確率
@@ -89,8 +93,10 @@ export const COLORS = {
   SHOE_SOLE: '#343A40',         // 靴底
   
   // 障害物の色
-  CACTUS_COLOR: '#228B22',
-  CACTUS_SPIKE_COLOR: '#006400',
+  SPIKE_MAIN_COLOR: '#4A5568',      // メインスパイクの鉄色
+  SPIKE_SHADOW_COLOR: '#2D3748',    // スパイクの影色
+  SPIKE_HIGHLIGHT_COLOR: '#718096', // スパイクのハイライト色
+  SPIKE_THORN_COLOR: '#1A202C',     // 小さなトゲの色
   BIRD_BODY_COLOR: '#8B4513',
   BIRD_WING_COLOR: '#654321',
   

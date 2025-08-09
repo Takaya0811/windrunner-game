@@ -549,24 +549,76 @@ export const drawCharacter = (
  * @param obstacle - 障害物の情報
  */
 export const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) => {
-  if (obstacle.type === 'cactus') {
-    ctx.fillStyle = COLORS.CACTUS_COLOR;
-    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+  if (obstacle.type === 'spike') {
+    // 金属スパイクの描画
+    const centerX = obstacle.x + obstacle.width / 2;
+    const bottomY = obstacle.y + obstacle.height;
     
-    // サボテンの刺
-    ctx.strokeStyle = COLORS.CACTUS_SPIKE_COLOR;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.moveTo(obstacle.x - 3, obstacle.y + i * 15 + 10);
-      ctx.lineTo(obstacle.x + 3, obstacle.y + i * 15 + 10);
-      ctx.stroke();
+    // メインスパイクの影（左側）
+    ctx.fillStyle = COLORS.SPIKE_SHADOW_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x + 2, bottomY);
+    ctx.lineTo(centerX - 3, obstacle.y);
+    ctx.lineTo(centerX, obstacle.y);
+    ctx.lineTo(obstacle.x + obstacle.width / 3, bottomY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // メインスパイクの本体
+    ctx.fillStyle = COLORS.SPIKE_MAIN_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x, bottomY);
+    ctx.lineTo(centerX, obstacle.y);
+    ctx.lineTo(obstacle.x + obstacle.width, bottomY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // メインスパイクのハイライト（右側）
+    ctx.fillStyle = COLORS.SPIKE_HIGHLIGHT_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(centerX, obstacle.y);
+    ctx.lineTo(centerX + 3, obstacle.y);
+    ctx.lineTo(obstacle.x + (obstacle.width * 2/3), bottomY);
+    ctx.lineTo(obstacle.x + obstacle.width, bottomY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // 小さなトゲ（左側）
+    ctx.fillStyle = COLORS.SPIKE_THORN_COLOR;
+    for (let i = 1; i <= 3; i++) {
+      const thornY = obstacle.y + (obstacle.height * i / 4);
+      const thornSize = 4 - i * 0.5;
       
       ctx.beginPath();
-      ctx.moveTo(obstacle.x + obstacle.width - 3, obstacle.y + i * 15 + 10);
-      ctx.lineTo(obstacle.x + obstacle.width + 3, obstacle.y + i * 15 + 10);
-      ctx.stroke();
+      ctx.moveTo(obstacle.x + 3, thornY + thornSize);
+      ctx.lineTo(obstacle.x - 5, thornY);
+      ctx.lineTo(obstacle.x + 3, thornY - thornSize);
+      ctx.closePath();
+      ctx.fill();
     }
+    
+    // 小さなトゲ（右側）
+    for (let i = 1; i <= 3; i++) {
+      const thornY = obstacle.y + (obstacle.height * i / 4) + 7; // 左側とズラす
+      const thornSize = 4 - i * 0.5;
+      
+      ctx.beginPath();
+      ctx.moveTo(obstacle.x + obstacle.width - 3, thornY + thornSize);
+      ctx.lineTo(obstacle.x + obstacle.width + 5, thornY);
+      ctx.lineTo(obstacle.x + obstacle.width - 3, thornY - thornSize);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // スパイクの縁取り（金属的な質感を出すため）
+    ctx.strokeStyle = COLORS.SPIKE_SHADOW_COLOR;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(obstacle.x, bottomY);
+    ctx.lineTo(centerX, obstacle.y);
+    ctx.lineTo(obstacle.x + obstacle.width, bottomY);
+    ctx.stroke();
+    
   } else {
     // 鳥
     ctx.fillStyle = COLORS.BIRD_BODY_COLOR;

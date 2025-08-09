@@ -25,7 +25,12 @@ export interface Obstacle {
   y: number;                    // 縦位置（ピクセル）
   width: number;                // 幅（ピクセル）
   height: number;               // 高さ（ピクセル）
-  type: 'cactus' | 'bird';      // 障害物の種類（サボテンまたは鳥）
+  type: 'spike' | 'bird';       // 障害物の種類（金属スパイクまたは鳥）
+  baseY?: number;               // 基準Y位置（鳥の上下動作用）
+  animationTime?: number;       // アニメーション時間（鳥の上下動作用）
+  velocityX?: number;           // X方向の速度（鳥の追跡用）
+  velocityY?: number;           // Y方向の速度（鳥の追跡用）
+  isTracking?: boolean;         // 追跡中かどうか（鳥用）
 }
 
 // 収集可能アイテムの情報を管理する型
