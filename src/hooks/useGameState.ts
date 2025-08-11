@@ -9,8 +9,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Character, Obstacle, Collectible } from '@/types/game';
-import { GAME_CONFIG } from '@/utils/constants';
+import { Character, Obstacle, Collectible, Weather } from '@/types/game';
+import { GAME_CONFIG, WEATHER_CONFIG } from '@/utils/constants';
 
 /**
  * useGameStateのパラメータ型定義
@@ -71,6 +71,13 @@ export const useGameState = (params?: UseGameStateParams) => {
   const [gameSpeed, setGameSpeed] = useState<number>(GAME_CONFIG.INITIAL_GAME_SPEED);
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
+  
+  // 天気状態
+  const [weather, setWeather] = useState<Weather>({
+    current: 'day',
+    distance: 0,
+    changeDistance: WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+  });
 
   // 最新状態のRef（パフォーマンス最適化用）
   const characterRef = useRef<Character | null>(null);
@@ -78,6 +85,11 @@ export const useGameState = (params?: UseGameStateParams) => {
   const gameSpeedRef = useRef<number>(GAME_CONFIG.INITIAL_GAME_SPEED);
   const obstaclesRef = useRef<Obstacle[]>([]);
   const collectiblesRef = useRef<Collectible[]>([]);
+  const weatherRef = useRef<Weather>({
+    current: 'day',
+    distance: 0,
+    changeDistance: WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+  });
 
   // 状態変更時にRefを更新（パフォーマンス最適化）
   useEffect(() => {
@@ -100,6 +112,37 @@ export const useGameState = (params?: UseGameStateParams) => {
     collectiblesRef.current = collectibles;
   }, [collectibles]);
 
+  useEffect(() => {
+    weatherRef.current = weather;
+  }, [weather]);
+
+  /**
+   * 天気を変更する関数
+   */
+  const updateWeather = (distance: number) => {
+    setWeather(prev => {
+      const newDistance = distance;
+      
+      if (newDistance >= prev.changeDistance) {
+        // 次の天気を計算（循環）
+        const currentIndex = WEATHER_CONFIG.WEATHER_CYCLE.indexOf(prev.current);
+        const nextIndex = (currentIndex + 1) % WEATHER_CONFIG.WEATHER_CYCLE.length;
+        const nextWeather = WEATHER_CONFIG.WEATHER_CYCLE[nextIndex];
+        
+        return {
+          current: nextWeather,
+          distance: newDistance,
+          changeDistance: prev.changeDistance + WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+        };
+      }
+      
+      return {
+        ...prev,
+        distance: newDistance,
+      };
+    });
+  };
+
   /**
    * ゲームを開始する関数
    * 
@@ -121,6 +164,13 @@ export const useGameState = (params?: UseGameStateParams) => {
       velocityY: 0,
       isJumping: false,
       animationFrame: 0,
+    });
+    
+    // 天気状態をリセット
+    setWeather({
+      current: 'day',
+      distance: 0,
+      changeDistance: WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
     });
     
     // キー入力状態もリセット
@@ -208,6 +258,7 @@ export const useGameState = (params?: UseGameStateParams) => {
     gameSpeed,
     gameOver,
     gameStarted,
+    weather,
     
     // 状態更新関数
     setCharacter,
@@ -217,6 +268,7 @@ export const useGameState = (params?: UseGameStateParams) => {
     setGameSpeed,
     setGameOver,
     setGameStarted,
+    setWeather,
     
     // 最新状態のRef（パフォーマンス最適化用）
     characterRef,
@@ -224,6 +276,7 @@ export const useGameState = (params?: UseGameStateParams) => {
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
+    weatherRef,
     
     // ゲーム制御関数
     startGame,
@@ -232,5 +285,6 @@ export const useGameState = (params?: UseGameStateParams) => {
     endGame,
     addScore,
     resetGameState,
+    updateWeather,
   };
 };

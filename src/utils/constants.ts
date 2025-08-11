@@ -175,3 +175,9 @@ export const GROUND_LAYERS = {
   GRASS_COUNT: 30,          // 草の数
   GRASS_HEIGHT: 8,          // 草の高さ
 };
+
+// 天気システムの設定
+export const WEATHER_CONFIG = {
+  WEATHER_CHANGE_DISTANCE: 1000,  // 天気が変わる距離間隔（ピクセル）
+  WEATHER_CYCLE: ['day', 'night', 'sunny', 'rainy'] as const,  // 天気の循環順序
+};

@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Character, Obstacle, Collectible } from '@/types/game';
+import { Character, Obstacle, Collectible, Weather } from '@/types/game';
 import { GAME_CONFIG } from '@/utils/constants';
 import { drawCharacter, drawObstacle, drawCollectible, drawStaticBackground } from '@/utils/drawing';
 import { checkCharacterObstacleCollision, checkCharacterCollectibleCollision } from '@/utils/collision';
@@ -34,6 +34,7 @@ interface UseRunnerGameLoopParams {
   setScore: React.Dispatch<React.SetStateAction<number>>;
   setGameSpeed: React.Dispatch<React.SetStateAction<number>>;
   setGameOver: React.Dispatch<React.SetStateAction<boolean>>;
+  updateWeather: (distance: number) => void;
   
   // ref
   characterRef: React.MutableRefObject<Character | null>;
@@ -41,6 +42,7 @@ interface UseRunnerGameLoopParams {
   gameSpeedRef: React.MutableRefObject<number>;
   obstaclesRef: React.MutableRefObject<Obstacle[]>;
   collectiblesRef: React.MutableRefObject<Collectible[]>;
+  weatherRef: React.MutableRefObject<Weather>;
 }
 
 /**
@@ -58,10 +60,12 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     setScore,
     setGameSpeed,
     setGameOver,
+    updateWeather,
     characterRef,
     gameSpeedRef,
     obstaclesRef,
-    collectiblesRef
+    collectiblesRef,
+    weatherRef
   } = params;
 
   const gameLoopRef = useRef<number | null>(null);
@@ -97,12 +101,15 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
 
     const currentGameSpeed = gameSpeedRef.current || GAME_CONFIG.INITIAL_GAME_SPEED;
 
-    // 1. キャラクター更新
+    // 1. キャラクター更新と天気更新
     setCharacter(prev => {
       const newChar = { ...prev };
       
       // キャラクターを常に右に移動（ランナーゲームの基本動作）
       newChar.x += currentGameSpeed;
+      
+      // 天気システム更新：プレイヤーの移動距離に基づいて天気を更新
+      updateWeather(newChar.x);
       
       // ジャンプ処理
       if (keysRef.current?.['Space'] && !newChar.isJumping) {
@@ -354,8 +361,9 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     ctx.save();
     ctx.translate(-cameraX, 0);
     
-    // 固定背景を描画
-    drawStaticBackground(ctx, cameraX);
+    // 固定背景を描画（天気情報を含む）
+    const currentWeather = weatherRef.current?.current || 'day';
+    drawStaticBackground(ctx, cameraX, currentWeather);
     
     // キャラクター描画
     if (currentCharacter) {
@@ -381,10 +389,12 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     setScore, 
     setGameSpeed, 
     setGameOver,
+    updateWeather,
     characterRef,
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
+    weatherRef,
     updateCamera
   ]);
 

@@ -15,17 +15,20 @@ export default function GamePage() {
     gameSpeed,
     gameOver,
     gameStarted,
+    weather,
     setCharacter,
     setObstacles,
     setCollectibles,
     setScore,
     setGameSpeed,
     setGameOver,
+    updateWeather,
     characterRef,
     scoreRef,
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
+    weatherRef,
     startGame,
     restartGame,
   } = useGameState({ keysRef });
@@ -67,11 +70,13 @@ export default function GamePage() {
     setScore,
     setGameSpeed,
     setGameOver,
+    updateWeather,
     characterRef,
     scoreRef,
     gameSpeedRef,
     obstaclesRef,
-    collectiblesRef
+    collectiblesRef,
+    weatherRef
   });
 
   return (
@@ -86,6 +91,14 @@ export default function GamePage() {
           </div>
           <div className="text-lg">
             速度: <span className="text-green-600">{gameSpeed.toFixed(1)}</span>
+          </div>
+          <div className="text-lg">
+            天気: <span className="text-orange-600">{
+              weather.current === 'day' ? '昼' :
+              weather.current === 'night' ? '夜' :
+              weather.current === 'sunny' ? '晴れ' :
+              weather.current === 'rainy' ? '雨' : weather.current
+            }</span>
           </div>
         </div>
 

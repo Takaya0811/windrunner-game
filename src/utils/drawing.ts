@@ -12,7 +12,8 @@
 import { 
   Character, 
   Obstacle, 
-  Collectible 
+  Collectible,
+  WeatherType
 } from '../types/game';
 
 import { 
@@ -679,16 +680,56 @@ const calculateParallaxOffsets = (score: number, gameSpeed: number): ParallaxScr
 };
 
 /**
+ * 天気に応じた空の色を取得
+ */
+const getSkyColors = (weather: WeatherType) => {
+  switch (weather) {
+    case 'day':
+      return {
+        top: '#87CEEB',    // 明るい青
+        middle: '#B0E0E6', // 薄い青
+        bottom: '#F0F8FF'  // 地平線付近は白っぽく
+      };
+    case 'night':
+      return {
+        top: '#191970',    // 濃紺
+        middle: '#483D8B', // 暗いスレートブルー
+        bottom: '#2F2F2F'  // 暗いグレー
+      };
+    case 'sunny':
+      return {
+        top: '#FFD700',    // 黄金色
+        middle: '#FFA500', // オレンジ色
+        bottom: '#FFFFE0'  // 薄い黄色
+      };
+    case 'rainy':
+      return {
+        top: '#696969',    // 暗いグレー
+        middle: '#778899', // ライトスレートグレー
+        bottom: '#D3D3D3'  // 薄いグレー
+      };
+    default:
+      return {
+        top: '#87CEEB',
+        middle: '#B0E0E6',
+        bottom: '#F0F8FF'
+      };
+  }
+};
+
+/**
  * 遠景レイヤーを描画（空、山、雲）
  * @param ctx - 描画コンテキスト
  * @param offset - パララックスオフセット
+ * @param weather - 天気の種類
  */
-const drawFarBackground = (ctx: CanvasRenderingContext2D, offset: number) => {
-  // 空のグラデーション
+const drawFarBackground = (ctx: CanvasRenderingContext2D, offset: number, weather: WeatherType = 'day') => {
+  // 天気に応じた空のグラデーション
+  const skyColors = getSkyColors(weather);
   const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
-  skyGradient.addColorStop(0, '#87CEEB'); // 明るい青
-  skyGradient.addColorStop(0.7, '#B0E0E6'); // 薄い青
-  skyGradient.addColorStop(1, '#F0F8FF'); // 地平線付近は白っぽく
+  skyGradient.addColorStop(0, skyColors.top);
+  skyGradient.addColorStop(0.7, skyColors.middle);
+  skyGradient.addColorStop(1, skyColors.bottom);
   ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, GAME_CONFIG.CANVAS_WIDTH, 300);
   
@@ -712,8 +753,10 @@ const drawFarBackground = (ctx: CanvasRenderingContext2D, offset: number) => {
     ctx.fill();
   }
   
-  // 雲（ゆっくり動く）
-  ctx.fillStyle = COLORS.WHITE;
+  // 雲（ゆっくり動く）- 天気により色を変更
+  const cloudColor = weather === 'night' ? '#F0F0F0' : 
+                     weather === 'rainy' ? '#808080' : 
+                     weather === 'sunny' ? '#FFFAF0' : COLORS.WHITE;
   const cloudOffset = offset * 0.8;
   
   for (let i = 0; i < CLOUDS.COUNT * 2; i++) {
@@ -722,7 +765,8 @@ const drawFarBackground = (ctx: CanvasRenderingContext2D, offset: number) => {
     
     if (cloudX > -150 && cloudX < GAME_CONFIG.CANVAS_WIDTH + 50) {
       // 雲の影
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      const shadowOpacity = weather === 'night' ? 0.3 : 0.1;
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
       ctx.beginPath();
       ctx.arc(cloudX + 2, cloudY + 2, 25, 0, Math.PI * 2);
       ctx.arc(cloudX + 22, cloudY + 2, 18, 0, Math.PI * 2);
@@ -730,12 +774,62 @@ const drawFarBackground = (ctx: CanvasRenderingContext2D, offset: number) => {
       ctx.fill();
       
       // 雲本体
-      ctx.fillStyle = COLORS.WHITE;
+      ctx.fillStyle = cloudColor;
       ctx.beginPath();
       ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
       ctx.arc(cloudX + 20, cloudY, 18, 0, Math.PI * 2);
       ctx.arc(cloudX + 40, cloudY, 22, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+  
+  // 雨の場合は雨粒を描画
+  if (weather === 'rainy') {
+    ctx.strokeStyle = '#4682B4';
+    ctx.lineWidth = 1;
+    const time = Date.now() * 0.01;
+    for (let i = 0; i < 50; i++) {
+      const rainX = (i * 20 + time * 3) % GAME_CONFIG.CANVAS_WIDTH;
+      const rainY = (time * 15 + i * 30) % 300;
+      ctx.beginPath();
+      ctx.moveTo(rainX, rainY);
+      ctx.lineTo(rainX - 3, rainY + 15);
+      ctx.stroke();
+    }
+  }
+  
+  // 夜の場合は星を描画
+  if (weather === 'night') {
+    ctx.fillStyle = '#FFFF00';
+    for (let i = 0; i < 20; i++) {
+      const starX = (i * 40 + 50) % GAME_CONFIG.CANVAS_WIDTH;
+      const starY = 20 + Math.sin(i * 0.5) * 30;
+      ctx.beginPath();
+      ctx.arc(starX, starY, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  // 晴れの場合は太陽を描画
+  if (weather === 'sunny') {
+    const sunX = GAME_CONFIG.CANVAS_WIDTH - 100;
+    const sunY = 80;
+    
+    // 太陽本体
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 太陽の光線
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI * 2) / 8;
+      ctx.beginPath();
+      ctx.moveTo(sunX + Math.cos(angle) * 40, sunY + Math.sin(angle) * 40);
+      ctx.lineTo(sunX + Math.cos(angle) * 50, sunY + Math.sin(angle) * 50);
+      ctx.stroke();
     }
   }
 };
@@ -928,13 +1022,15 @@ const drawForeground = (ctx: CanvasRenderingContext2D, offset: number) => {
  * 固定背景を描画（ランナーゲーム用）
  * @param ctx - 描画コンテキスト
  * @param cameraX - カメラのX位置
+ * @param weather - 天気の種類
  */
 export const drawStaticBackground = (
   ctx: CanvasRenderingContext2D, 
-  cameraX: number
+  cameraX: number,
+  weather: WeatherType = 'day'
 ) => {
   // 固定背景を描画（カメラ位置に依存しない）
-  drawStaticFarBackground(ctx);
+  drawStaticFarBackground(ctx, weather);
   drawStaticMidBackground(ctx, cameraX);
   drawStaticNearBackground(ctx, cameraX);
   drawStaticForeground(ctx, cameraX);
@@ -946,12 +1042,13 @@ export const drawStaticBackground = (
 /**
  * 固定遠景レイヤーを描画
  */
-const drawStaticFarBackground = (ctx: CanvasRenderingContext2D) => {
-  // 空のグラデーション（固定）
+const drawStaticFarBackground = (ctx: CanvasRenderingContext2D, weather: WeatherType = 'day') => {
+  // 天気に応じた空のグラデーション（固定）
+  const skyColors = getSkyColors(weather);
   const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
-  skyGradient.addColorStop(0, '#87CEEB');
-  skyGradient.addColorStop(0.7, '#B0E0E6');
-  skyGradient.addColorStop(1, '#F0F8FF');
+  skyGradient.addColorStop(0, skyColors.top);
+  skyGradient.addColorStop(0.7, skyColors.middle);
+  skyGradient.addColorStop(1, skyColors.bottom);
   ctx.fillStyle = skyGradient;
   ctx.fillRect(-2000, 0, 6000, 300); // 大きな範囲を描画
 
@@ -972,8 +1069,11 @@ const drawStaticFarBackground = (ctx: CanvasRenderingContext2D) => {
     ctx.fill();
   }
 
-  // 固定の雲
-  ctx.fillStyle = COLORS.WHITE;
+  // 固定の雲 - 天気により色を変更
+  const cloudColor = weather === 'night' ? '#F0F0F0' : 
+                     weather === 'rainy' ? '#808080' : 
+                     weather === 'sunny' ? '#FFFAF0' : COLORS.WHITE;
+  ctx.fillStyle = cloudColor;
   for (let i = -2; i <= 12; i++) {
     const cloudX = i * 300 + 50;
     const cloudY = 60 + Math.sin(i * 0.3) * 20;
@@ -985,6 +1085,66 @@ const drawStaticFarBackground = (ctx: CanvasRenderingContext2D) => {
     ctx.arc(cloudX + 40, cloudY, 15, 0, Math.PI * 2);
     ctx.arc(cloudX + 20, cloudY - 15, 12, 0, Math.PI * 2);
     ctx.fill();
+  }
+  
+  // 天気エフェクトを追加
+  // 雨の場合は雨粒を描画
+  if (weather === 'rainy') {
+    ctx.strokeStyle = '#4682B4';
+    ctx.lineWidth = 1;
+    const time = Date.now() * 0.01;
+    for (let i = 0; i < 100; i++) {
+      const rainX = (i * 15 + time * 3) % 6000 - 2000;
+      const rainY = (time * 15 + i * 20) % 300;
+      ctx.beginPath();
+      ctx.moveTo(rainX, rainY);
+      ctx.lineTo(rainX - 3, rainY + 15);
+      ctx.stroke();
+    }
+  }
+  
+  // 夜の場合は星を描画
+  if (weather === 'night') {
+    ctx.fillStyle = '#FFFF00';
+    for (let i = 0; i < 50; i++) {
+      const starX = (i * 120 + 50) % 6000 - 2000;
+      const starY = 20 + Math.sin(i * 0.5) * 30;
+      ctx.beginPath();
+      ctx.arc(starX, starY, 1, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 月を描画
+      if (i === 0) {
+        ctx.fillStyle = '#F5F5DC';
+        ctx.beginPath();
+        ctx.arc(starX + 100, starY + 20, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFF00'; // 星の色に戻す
+      }
+    }
+  }
+  
+  // 晴れの場合は太陽を描画
+  if (weather === 'sunny') {
+    const sunX = 600;
+    const sunY = 80;
+    
+    // 太陽本体
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 太陽の光線
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI * 2) / 8;
+      ctx.beginPath();
+      ctx.moveTo(sunX + Math.cos(angle) * 40, sunY + Math.sin(angle) * 40);
+      ctx.lineTo(sunX + Math.cos(angle) * 50, sunY + Math.sin(angle) * 50);
+      ctx.stroke();
+    }
   }
 };
 

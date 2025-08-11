@@ -42,6 +42,16 @@ export interface Collectible {
   collected: boolean;  // 収集済みかどうか
 }
 
+// 天気の種類
+export type WeatherType = 'day' | 'night' | 'sunny' | 'rainy';
+
+// 天気情報を管理する型
+export interface Weather {
+  current: WeatherType;      // 現在の天気
+  distance: number;          // プレイヤーが進んだ総距離
+  changeDistance: number;    // 次の天気変更までの距離
+}
+
 // ゲームの全体的な状態を管理する型
 export interface GameState {
   gameStarted: boolean;      // ゲームが開始されているか
@@ -51,6 +61,7 @@ export interface GameState {
   character: Character;      // キャラクター情報
   obstacles: Obstacle[];     // 障害物のリスト
   collectibles: Collectible[]; // 収集アイテムのリスト
+  weather: Weather;          // 天気情報
 }
 
 // 衝突判定で使用する矩形の型
