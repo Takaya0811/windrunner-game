@@ -13,7 +13,10 @@ import {
   Character, 
   Obstacle, 
   Collectible,
-  WeatherType
+  WeatherType,
+  Weather,
+  BackgroundTheme,
+  BackgroundInfo
 } from '../types/game';
 
 import { 
@@ -620,7 +623,7 @@ export const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) 
     ctx.lineTo(obstacle.x + obstacle.width, bottomY);
     ctx.stroke();
     
-  } else {
+  } else if (obstacle.type === 'bird') {
     // 鳥
     ctx.fillStyle = COLORS.BIRD_BODY_COLOR;
     ctx.beginPath();
@@ -636,6 +639,56 @@ export const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) 
     ctx.moveTo(obstacle.x + 30, obstacle.y + 5);
     ctx.lineTo(obstacle.x + 20, obstacle.y - 5);
     ctx.stroke();
+    
+  } else if (obstacle.type === 'pitfall') {
+    // 落とし穴
+    const pitfallX = obstacle.x;
+    const pitfallY = obstacle.y;
+    const pitfallWidth = obstacle.width;
+    const pitfallHeight = obstacle.height;
+    
+    // 落とし穴の穴の部分（暗い色）
+    ctx.fillStyle = '#2F2F2F';
+    ctx.fillRect(pitfallX, pitfallY, pitfallWidth, pitfallHeight);
+    
+    // 落とし穴の縁（地面と同じ色）
+    ctx.strokeStyle = COLORS.GROUND_LINE_COLOR;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(pitfallX, pitfallY, pitfallWidth, pitfallHeight);
+    
+    // 落とし穴の奥行き感を出すためのグラデーション
+    const gradient = ctx.createLinearGradient(pitfallX, pitfallY, pitfallX, pitfallY + pitfallHeight);
+    gradient.addColorStop(0, '#2F2F2F');
+    gradient.addColorStop(0.3, '#1C1C1C');
+    gradient.addColorStop(1, '#000000');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(pitfallX + 3, pitfallY + 3, pitfallWidth - 6, pitfallHeight - 6);
+    
+    // 落とし穴の側面（立体感を出すため）
+    ctx.fillStyle = '#404040';
+    // 左側面
+    ctx.fillRect(pitfallX, pitfallY, 6, pitfallHeight);
+    // 右側面
+    ctx.fillRect(pitfallX + pitfallWidth - 6, pitfallY, 6, pitfallHeight);
+    
+    // 危険を示すための警告マーク（小さな三角形）
+    ctx.fillStyle = '#FF4444';
+    for (let i = 0; i < 3; i++) {
+      const markX = pitfallX + 20 + i * 25;
+      const markY = pitfallY - 10;
+      ctx.beginPath();
+      ctx.moveTo(markX, markY);
+      ctx.lineTo(markX - 5, markY + 8);
+      ctx.lineTo(markX + 5, markY + 8);
+      ctx.closePath();
+      ctx.fill();
+      
+      // 警告マークの中の感嘆符
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(markX - 1, markY + 2, 2, 4);
+      ctx.fillRect(markX - 1, markY + 7, 2, 1);
+      ctx.fillStyle = '#FF4444';
+    }
   }
 };
 
@@ -680,6 +733,43 @@ const calculateParallaxOffsets = (score: number, gameSpeed: number): ParallaxScr
 };
 
 /**
+ * 16進数カラーをRGBに変換
+ */
+const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+};
+
+/**
+ * RGBを16進数カラーに変換
+ */
+const rgbToHex = (r: number, g: number, b: number): string => {
+  const toHex = (n: number) => {
+    const hex = Math.round(n).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+};
+
+/**
+ * 2つの色を補間（lerp）する
+ */
+const lerpColor = (color1: string, color2: string, t: number): string => {
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+  
+  const r = rgb1.r + (rgb2.r - rgb1.r) * t;
+  const g = rgb1.g + (rgb2.g - rgb1.g) * t;
+  const b = rgb1.b + (rgb2.b - rgb1.b) * t;
+  
+  return rgbToHex(r, g, b);
+};
+
+/**
  * 天気に応じた空の色を取得
  */
 const getSkyColors = (weather: WeatherType) => {
@@ -715,6 +805,20 @@ const getSkyColors = (weather: WeatherType) => {
         bottom: '#F0F8FF'
       };
   }
+};
+
+/**
+ * 2つの天気の色を混合
+ */
+const blendSkyColors = (weather1: WeatherType, weather2: WeatherType, progress: number) => {
+  const colors1 = getSkyColors(weather1);
+  const colors2 = getSkyColors(weather2);
+  
+  return {
+    top: lerpColor(colors1.top, colors2.top, progress),
+    middle: lerpColor(colors1.middle, colors2.middle, progress),
+    bottom: lerpColor(colors1.bottom, colors2.bottom, progress),
+  };
 };
 
 /**
@@ -1022,18 +1126,22 @@ const drawForeground = (ctx: CanvasRenderingContext2D, offset: number) => {
  * 固定背景を描画（ランナーゲーム用）
  * @param ctx - 描画コンテキスト
  * @param cameraX - カメラのX位置
- * @param weather - 天気の種類
+ * @param weather - 天気情報
+ * @param backgroundInfo - 背景テーマ情報
  */
 export const drawStaticBackground = (
   ctx: CanvasRenderingContext2D, 
   cameraX: number,
-  weather: WeatherType = 'day'
+  weather: Weather,
+  backgroundInfo?: BackgroundInfo
 ) => {
+  const currentTheme = backgroundInfo?.current || 'japan';
+  
   // 固定背景を描画（カメラ位置に依存しない）
   drawStaticFarBackground(ctx, weather);
-  drawStaticMidBackground(ctx, cameraX);
+  drawStaticMidBackground(ctx, cameraX, currentTheme);
   drawStaticNearBackground(ctx, cameraX);
-  drawStaticForeground(ctx, cameraX);
+  drawStaticForeground(ctx, cameraX, currentTheme);
   
   // テキスト描画のリセット
   ctx.textAlign = 'left';
@@ -1042,9 +1150,18 @@ export const drawStaticBackground = (
 /**
  * 固定遠景レイヤーを描画
  */
-const drawStaticFarBackground = (ctx: CanvasRenderingContext2D, weather: WeatherType = 'day') => {
-  // 天気に応じた空のグラデーション（固定）
-  const skyColors = getSkyColors(weather);
+const drawStaticFarBackground = (ctx: CanvasRenderingContext2D, weather: Weather) => {
+  // 段階的天気変更に対応した空のグラデーション
+  let skyColors;
+  
+  if (weather.isTransitioning) {
+    // 天気変更中：現在の天気と次の天気を混合
+    skyColors = blendSkyColors(weather.current, weather.next, weather.transitionProgress);
+  } else {
+    // 通常時：現在の天気のみ
+    skyColors = getSkyColors(weather.current);
+  }
+  
   const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
   skyGradient.addColorStop(0, skyColors.top);
   skyGradient.addColorStop(0.7, skyColors.middle);
@@ -1069,10 +1186,21 @@ const drawStaticFarBackground = (ctx: CanvasRenderingContext2D, weather: Weather
     ctx.fill();
   }
 
-  // 固定の雲 - 天気により色を変更
-  const cloudColor = weather === 'night' ? '#F0F0F0' : 
-                     weather === 'rainy' ? '#808080' : 
-                     weather === 'sunny' ? '#FFFAF0' : COLORS.WHITE;
+  // 固定の雲 - 段階的天気変更に対応
+  let cloudColor;
+  if (weather.isTransitioning) {
+    const currentCloudColor = weather.current === 'night' ? '#F0F0F0' : 
+                             weather.current === 'rainy' ? '#808080' : 
+                             weather.current === 'sunny' ? '#FFFAF0' : COLORS.WHITE;
+    const nextCloudColor = weather.next === 'night' ? '#F0F0F0' : 
+                          weather.next === 'rainy' ? '#808080' : 
+                          weather.next === 'sunny' ? '#FFFAF0' : COLORS.WHITE;
+    cloudColor = lerpColor(currentCloudColor, nextCloudColor, weather.transitionProgress);
+  } else {
+    cloudColor = weather.current === 'night' ? '#F0F0F0' : 
+                weather.current === 'rainy' ? '#808080' : 
+                weather.current === 'sunny' ? '#FFFAF0' : COLORS.WHITE;
+  }
   ctx.fillStyle = cloudColor;
   for (let i = -2; i <= 12; i++) {
     const cloudX = i * 300 + 50;
@@ -1087,77 +1215,122 @@ const drawStaticFarBackground = (ctx: CanvasRenderingContext2D, weather: Weather
     ctx.fill();
   }
   
-  // 天気エフェクトを追加
-  // 雨の場合は雨粒を描画
-  if (weather === 'rainy') {
-    ctx.strokeStyle = '#4682B4';
-    ctx.lineWidth = 1;
-    const time = Date.now() * 0.01;
-    for (let i = 0; i < 100; i++) {
-      const rainX = (i * 15 + time * 3) % 6000 - 2000;
-      const rainY = (time * 15 + i * 20) % 300;
-      ctx.beginPath();
-      ctx.moveTo(rainX, rainY);
-      ctx.lineTo(rainX - 3, rainY + 15);
-      ctx.stroke();
-    }
-  }
-  
-  // 夜の場合は星を描画
-  if (weather === 'night') {
-    ctx.fillStyle = '#FFFF00';
-    for (let i = 0; i < 50; i++) {
-      const starX = (i * 120 + 50) % 6000 - 2000;
-      const starY = 20 + Math.sin(i * 0.5) * 30;
-      ctx.beginPath();
-      ctx.arc(starX, starY, 1, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // 月を描画
-      if (i === 0) {
-        ctx.fillStyle = '#F5F5DC';
+  // 天気エフェクトを段階的変更対応で描画
+  const drawWeatherEffect = (weatherType: WeatherType, opacity: number) => {
+    if (weatherType === 'rainy') {
+      // 雨の場合は雨粒を描画
+      ctx.strokeStyle = `rgba(70, 130, 180, ${opacity})`;
+      ctx.lineWidth = 1;
+      const time = Date.now() * 0.01;
+      for (let i = 0; i < 100; i++) {
+        const rainX = (i * 15 + time * 3) % 6000 - 2000;
+        const rainY = (time * 15 + i * 20) % 300;
         ctx.beginPath();
-        ctx.arc(starX + 100, starY + 20, 25, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#FFFF00'; // 星の色に戻す
+        ctx.moveTo(rainX, rainY);
+        ctx.lineTo(rainX - 3, rainY + 15);
+        ctx.stroke();
       }
     }
-  }
-  
-  // 晴れの場合は太陽を描画
-  if (weather === 'sunny') {
-    const sunX = 600;
-    const sunY = 80;
     
-    // 太陽本体
-    ctx.fillStyle = '#FFD700';
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // 太陽の光線
-    ctx.strokeStyle = '#FFD700';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * Math.PI * 2) / 8;
-      ctx.beginPath();
-      ctx.moveTo(sunX + Math.cos(angle) * 40, sunY + Math.sin(angle) * 40);
-      ctx.lineTo(sunX + Math.cos(angle) * 50, sunY + Math.sin(angle) * 50);
-      ctx.stroke();
+    if (weatherType === 'night') {
+      // 夜の場合は星を描画
+      ctx.fillStyle = `rgba(255, 255, 0, ${opacity})`;
+      for (let i = 0; i < 50; i++) {
+        const starX = (i * 120 + 50) % 6000 - 2000;
+        const starY = 20 + Math.sin(i * 0.5) * 30;
+        ctx.beginPath();
+        ctx.arc(starX, starY, 1, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 月を描画
+        if (i === 0) {
+          ctx.fillStyle = `rgba(245, 245, 220, ${opacity})`;
+          ctx.beginPath();
+          ctx.arc(starX + 100, starY + 20, 25, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255, 255, 0, ${opacity})`; // 星の色に戻す
+        }
+      }
     }
+    
+    if (weatherType === 'sunny') {
+      // 晴れの場合は太陽を描画
+      const sunX = 600;
+      const sunY = 80;
+      
+      // 太陽本体
+      ctx.fillStyle = `rgba(255, 215, 0, ${opacity})`;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 太陽の光線
+      ctx.strokeStyle = `rgba(255, 215, 0, ${opacity})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI * 2) / 8;
+        ctx.beginPath();
+        ctx.moveTo(sunX + Math.cos(angle) * 40, sunY + Math.sin(angle) * 40);
+        ctx.lineTo(sunX + Math.cos(angle) * 50, sunY + Math.sin(angle) * 50);
+        ctx.stroke();
+      }
+    }
+  };
+
+  // 天気エフェクトの描画
+  if (weather.isTransitioning) {
+    // 天気変更中：現在の天気のエフェクトを徐々に薄く、次の天気のエフェクトを徐々に濃く
+    drawWeatherEffect(weather.current, 1 - weather.transitionProgress);
+    drawWeatherEffect(weather.next, weather.transitionProgress);
+  } else {
+    // 通常時：現在の天気のエフェクトのみ
+    drawWeatherEffect(weather.current, 1);
   }
 };
 
 /**
- * 建物パターンの定義（無限背景用）
+ * テーマ別建物パターンの定義
  */
-const BUILDING_PATTERNS = [
-  { type: 'church', y: 220, width: 60, height: 80 },
-  { type: 'castle', y: 240, width: 80, height: 60 },
-  { type: 'house', y: 250, width: 50, height: 50 },
-  { type: 'windmill', y: 240, width: 40, height: 60 },
-  { type: 'market', y: 260, width: 50, height: 40 },
-];
+const getThemeBuildingPatterns = (theme: BackgroundTheme) => {
+  switch (theme) {
+    case 'japan':
+      return [
+        { type: 'temple', y: 220, width: 70, height: 80 },
+        { type: 'pagoda', y: 200, width: 50, height: 100 },
+        { type: 'traditional_house', y: 250, width: 60, height: 50 },
+        { type: 'torii', y: 260, width: 40, height: 40 },
+        { type: 'shrine', y: 240, width: 55, height: 60 },
+      ];
+    case 'china':
+      return [
+        { type: 'chinese_temple', y: 210, width: 80, height: 90 },
+        { type: 'skyscraper', y: 150, width: 40, height: 150 },
+        { type: 'chinese_house', y: 240, width: 65, height: 60 },
+        { type: 'dragon_gate', y: 250, width: 50, height: 50 },
+        { type: 'tea_house', y: 260, width: 45, height: 40 },
+      ];
+    case 'europe':
+      return [
+        { type: 'church', y: 220, width: 60, height: 80 },
+        { type: 'castle', y: 240, width: 80, height: 60 },
+        { type: 'house', y: 250, width: 50, height: 50 },
+        { type: 'windmill', y: 240, width: 40, height: 60 },
+        { type: 'market', y: 260, width: 50, height: 40 },
+      ];
+    case 'egypt':
+      return [
+        { type: 'pyramid', y: 200, width: 90, height: 100 },
+        { type: 'sphinx', y: 250, width: 80, height: 50 },
+        { type: 'obelisk', y: 220, width: 20, height: 80 },
+        { type: 'temple', y: 230, width: 70, height: 70 },
+        { type: 'palace', y: 240, width: 60, height: 60 },
+      ];
+    default:
+      return [
+        { type: 'house', y: 250, width: 50, height: 50 },
+      ];
+  }
+};
 
 /**
  * 建物の間隔（ピクセル）
@@ -1165,12 +1338,15 @@ const BUILDING_PATTERNS = [
 const BUILDING_SPACING = 200;
 
 /**
- * 無限中景レイヤーを描画
+ * 無限中景レイヤーを描画（テーマ対応）
  */
-const drawStaticMidBackground = (ctx: CanvasRenderingContext2D, cameraX: number) => {
+const drawStaticMidBackground = (ctx: CanvasRenderingContext2D, cameraX: number, theme: BackgroundTheme = 'japan') => {
   // 画面範囲を計算（余裕を持たせる）
   const leftBound = cameraX - 200;
   const rightBound = cameraX + GAME_CONFIG.CANVAS_WIDTH + 200;
+  
+  // テーマに応じた建物パターンを取得
+  const patterns = getThemeBuildingPatterns(theme);
   
   // 最初の建物のインデックスを計算
   const firstBuildingIndex = Math.floor(leftBound / BUILDING_SPACING);
@@ -1183,8 +1359,8 @@ const drawStaticMidBackground = (ctx: CanvasRenderingContext2D, cameraX: number)
     // 画面範囲内にある場合のみ描画
     if (buildingX >= leftBound && buildingX <= rightBound) {
       // パターンをループさせる（モジュロ演算）
-      const patternIndex = ((i % BUILDING_PATTERNS.length) + BUILDING_PATTERNS.length) % BUILDING_PATTERNS.length;
-      const pattern = BUILDING_PATTERNS[patternIndex];
+      const patternIndex = ((i % patterns.length) + patterns.length) % patterns.length;
+      const pattern = patterns[patternIndex];
       
       const building = {
         x: buildingX,
@@ -1212,10 +1388,194 @@ interface Building {
 }
 
 /**
- * 建物を描画する共通関数
+ * 建物を描画する共通関数（テーマ対応）
  */
 const drawBuilding = (ctx: CanvasRenderingContext2D, building: Building) => {
   switch (building.type) {
+    // 日本テーマの建物
+    case 'temple':
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 屋根（反り上がった形）
+      ctx.fillStyle = '#654321';
+      ctx.beginPath();
+      ctx.moveTo(building.x - 5, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 25);
+      ctx.lineTo(building.x + building.width + 5, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'pagoda':
+      // 多層塔
+      for (let layer = 0; layer < 3; layer++) {
+        const layerY = building.y + layer * 30;
+        const layerWidth = building.width - layer * 8;
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(building.x + layer * 4, layerY, layerWidth, 25);
+        // 各層の屋根
+        ctx.fillStyle = '#654321';
+        ctx.beginPath();
+        ctx.moveTo(building.x + layer * 4 - 3, layerY);
+        ctx.lineTo(building.x + building.width/2, layerY - 10);
+        ctx.lineTo(building.x + layerWidth + layer * 4 + 3, layerY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+      
+    case 'traditional_house':
+      ctx.fillStyle = '#DEB887';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 日本風の屋根
+      ctx.fillStyle = '#2F4F4F';
+      ctx.beginPath();
+      ctx.moveTo(building.x - 3, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 20);
+      ctx.lineTo(building.x + building.width + 3, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'torii':
+      // 鳥居
+      ctx.strokeStyle = '#8B0000';
+      ctx.lineWidth = 6;
+      // 縦の柱
+      ctx.beginPath();
+      ctx.moveTo(building.x + 5, building.y + building.height);
+      ctx.lineTo(building.x + 5, building.y);
+      ctx.moveTo(building.x + building.width - 5, building.y + building.height);
+      ctx.lineTo(building.x + building.width - 5, building.y);
+      ctx.stroke();
+      // 横の梁
+      ctx.beginPath();
+      ctx.moveTo(building.x, building.y + 10);
+      ctx.lineTo(building.x + building.width, building.y + 10);
+      ctx.moveTo(building.x + 3, building.y + 20);
+      ctx.lineTo(building.x + building.width - 3, building.y + 20);
+      ctx.stroke();
+      break;
+      
+    case 'shrine':
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 神社の屋根
+      ctx.fillStyle = '#228B22';
+      ctx.beginPath();
+      ctx.moveTo(building.x - 2, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 20);
+      ctx.lineTo(building.x + building.width + 2, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    // 中国テーマの建物
+    case 'chinese_temple':
+      ctx.fillStyle = '#B22222';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 中国風の屋根（反り上がり）
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.moveTo(building.x - 8, building.y);
+      ctx.quadraticCurveTo(building.x + building.width/2, building.y - 35, building.x + building.width + 8, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'skyscraper':
+      // 上海風の高層ビル
+      ctx.fillStyle = '#4682B4';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 窓
+      ctx.fillStyle = '#FFD700';
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 8; j++) {
+          ctx.fillRect(building.x + 5 + i * 6, building.y + 10 + j * 15, 4, 8);
+        }
+      }
+      break;
+      
+    case 'chinese_house':
+      ctx.fillStyle = '#CD853F';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 中国風の屋根
+      ctx.fillStyle = '#B22222';
+      ctx.beginPath();
+      ctx.moveTo(building.x - 5, building.y);
+      ctx.quadraticCurveTo(building.x + building.width/2, building.y - 25, building.x + building.width + 5, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'dragon_gate':
+      // 龍門
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 龍の装飾
+      ctx.fillStyle = '#B22222';
+      ctx.beginPath();
+      ctx.arc(building.x + building.width/2, building.y + 10, 8, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+      
+    case 'tea_house':
+      ctx.fillStyle = '#8FBC8F';
+      ctx.fillRect(building.x, building.y, building.width, building.height);
+      // 茶屋の屋根
+      ctx.fillStyle = '#2F4F4F';
+      ctx.beginPath();
+      ctx.moveTo(building.x, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 15);
+      ctx.lineTo(building.x + building.width, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    // エジプトテーマの建物
+    case 'pyramid':
+      // ピラミッド
+      ctx.fillStyle = '#DEB887';
+      ctx.beginPath();
+      ctx.moveTo(building.x, building.y + building.height);
+      ctx.lineTo(building.x + building.width/2, building.y);
+      ctx.lineTo(building.x + building.width, building.y + building.height);
+      ctx.closePath();
+      ctx.fill();
+      // 影
+      ctx.fillStyle = '#CD853F';
+      ctx.beginPath();
+      ctx.moveTo(building.x + building.width/2, building.y);
+      ctx.lineTo(building.x + building.width, building.y + building.height);
+      ctx.lineTo(building.x + building.width/2, building.y + building.height);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    case 'sphinx':
+      // スフィンクス
+      ctx.fillStyle = '#DEB887';
+      ctx.fillRect(building.x, building.y + 30, building.width - 20, building.height - 30);
+      // 頭部
+      ctx.beginPath();
+      ctx.arc(building.x + building.width - 15, building.y + 20, 15, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+      
+    case 'obelisk':
+      // オベリスク
+      ctx.fillStyle = '#D2691E';
+      ctx.fillRect(building.x + 8, building.y, building.width - 16, building.height);
+      // 先端
+      ctx.beginPath();
+      ctx.moveTo(building.x + 8, building.y);
+      ctx.lineTo(building.x + building.width/2, building.y - 10);
+      ctx.lineTo(building.x + building.width - 8, building.y);
+      ctx.closePath();
+      ctx.fill();
+      break;
+      
+    // ヨーロッパテーマの建物（既存）
     case 'church':
       ctx.fillStyle = '#D2691E';
       ctx.fillRect(building.x, building.y, building.width, building.height);
@@ -1226,6 +1586,10 @@ const drawBuilding = (ctx: CanvasRenderingContext2D, building: Building) => {
       ctx.lineTo(building.x + building.width, building.y);
       ctx.closePath();
       ctx.fill();
+      // 十字架
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(building.x + building.width/2 - 2, building.y - 35, 4, 10);
+      ctx.fillRect(building.x + building.width/2 - 5, building.y - 32, 10, 4);
       break;
       
     case 'castle':
@@ -1319,15 +1683,153 @@ const drawStaticNearBackground = (ctx: CanvasRenderingContext2D, cameraX: number
 };
 
 /**
- * 固定前景レイヤーを描画
+ * テーマ別地面色の取得
  */
-const drawStaticForeground = (ctx: CanvasRenderingContext2D, cameraX: number) => {
+const getThemeGroundColors = (theme: BackgroundTheme) => {
+  switch (theme) {
+    case 'japan':
+      return {
+        road: '#708090',     // 日本の石道（スレートグレー）
+        line: '#2F4F4F',     // 石の継ぎ目（濃いスレートグレー）
+        accent: '#36454F'    // 石のアクセント
+      };
+    case 'china':
+      return {
+        road: '#696969',     // 中国の石畳（暗いグレー）
+        line: '#2F2F2F',     // 石畳の継ぎ目（濃いグレー）
+        accent: '#4F4F4F'    // 石畳のアクセント
+      };
+    case 'europe':
+      return {
+        road: '#B8860B',     // ヨーロッパのレンガ道（暗い金色）
+        line: '#8B4513',     // レンガの継ぎ目（茶色）
+        accent: '#CD853F'    // レンガのアクセント
+      };
+    case 'egypt':
+      return {
+        road: '#F4A460',     // エジプトの砂道（砂色）
+        line: '#D2691E',     // 砂の模様（チョコレート色）
+        accent: '#DEB887'    // 砂のアクセント
+      };
+    default:
+      return {
+        road: GROUND_LAYERS.ROAD_COLOR,
+        line: COLORS.GROUND_LINE_COLOR,
+        accent: '#8B7355'
+      };
+  }
+};
+
+/**
+ * 固定前景レイヤーを描画（テーマ対応）
+ */
+const drawStaticForeground = (ctx: CanvasRenderingContext2D, cameraX: number, theme: BackgroundTheme = 'japan') => {
+  const themeColors = getThemeGroundColors(theme);
+  
   // 道路基盤（大きな範囲を描画）
-  ctx.fillStyle = GROUND_LAYERS.ROAD_COLOR;
+  ctx.fillStyle = themeColors.road;
   ctx.fillRect(cameraX - 100, GROUND_LAYERS.ROAD_Y, GAME_CONFIG.CANVAS_WIDTH + 200, GROUND_LAYERS.ROAD_HEIGHT);
   
-  // レンガのパターン
-  ctx.strokeStyle = COLORS.GROUND_LINE_COLOR;
+  // テーマ別の地面パターンを描画
+  switch (theme) {
+    case 'japan':
+      drawJapaneseStoneRoad(ctx, cameraX, themeColors);
+      break;
+    case 'china':
+      drawChineseStonePath(ctx, cameraX, themeColors);
+      break;
+    case 'europe':
+      drawEuropeanBrickRoad(ctx, cameraX, themeColors);
+      break;
+    case 'egypt':
+      drawEgyptianSandRoad(ctx, cameraX, themeColors);
+      break;
+    default:
+      drawEuropeanBrickRoad(ctx, cameraX, themeColors);
+  }
+};
+
+/**
+ * テーマ別地面色の型定義
+ */
+interface ThemeGroundColors {
+  road: string;
+  line: string;
+  accent: string;
+}
+
+/**
+ * 日本風石道パターンを描画
+ */
+const drawJapaneseStoneRoad = (ctx: CanvasRenderingContext2D, cameraX: number, colors: ThemeGroundColors) => {
+  ctx.strokeStyle = colors.line;
+  ctx.lineWidth = 1.5;
+  
+  // 不規則な石のパターン
+  const stoneSize = 40;
+  const startX = Math.floor((cameraX - 100) / stoneSize) * stoneSize;
+  const endX = cameraX + GAME_CONFIG.CANVAS_WIDTH + 100;
+  
+  for (let x = startX; x < endX; x += stoneSize) {
+    for (let y = GROUND_LAYERS.ROAD_Y + 20; y < GROUND_LAYERS.ROAD_Y + GROUND_LAYERS.ROAD_HEIGHT - 20; y += stoneSize) {
+      // 石の境界線（やや不規則に）
+      const offsetX = Math.sin(x * 0.1 + y * 0.1) * 3;
+      const offsetY = Math.cos(x * 0.1 + y * 0.1) * 3;
+      
+      ctx.beginPath();
+      ctx.moveTo(x + offsetX, y + offsetY);
+      ctx.lineTo(x + stoneSize + offsetX, y + offsetY);
+      ctx.lineTo(x + stoneSize + offsetX, y + stoneSize + offsetY);
+      ctx.lineTo(x + offsetX, y + stoneSize + offsetY);
+      ctx.closePath();
+      ctx.stroke();
+      
+      // 石の中央にアクセント
+      ctx.fillStyle = colors.accent;
+      ctx.fillRect(x + stoneSize/2 - 1 + offsetX, y + stoneSize/2 - 1 + offsetY, 2, 2);
+    }
+  }
+};
+
+/**
+ * 中国風石畳パターンを描画
+ */
+const drawChineseStonePath = (ctx: CanvasRenderingContext2D, cameraX: number, colors: ThemeGroundColors) => {
+  ctx.strokeStyle = colors.line;
+  ctx.lineWidth = 2;
+  
+  // 六角形の石畳パターン
+  const hexSize = 30;
+  const startX = Math.floor((cameraX - 100) / hexSize) * hexSize;
+  const endX = cameraX + GAME_CONFIG.CANVAS_WIDTH + 100;
+  
+  for (let x = startX; x < endX; x += hexSize) {
+    for (let y = GROUND_LAYERS.ROAD_Y + 20; y < GROUND_LAYERS.ROAD_Y + GROUND_LAYERS.ROAD_HEIGHT - 20; y += hexSize * 0.75) {
+      const offsetX = (Math.floor((y - GROUND_LAYERS.ROAD_Y) / (hexSize * 0.75)) % 2) * hexSize / 2;
+      
+      // 六角形を描画
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3;
+        const hexX = x + offsetX + Math.cos(angle) * 15;
+        const hexY = y + Math.sin(angle) * 15;
+        if (i === 0) {
+          ctx.moveTo(hexX, hexY);
+        } else {
+          ctx.lineTo(hexX, hexY);
+        }
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+};
+
+/**
+ * ヨーロッパ風レンガ道パターンを描画
+ */
+const drawEuropeanBrickRoad = (ctx: CanvasRenderingContext2D, cameraX: number, colors: ThemeGroundColors) => {
+  ctx.strokeStyle = colors.line;
   ctx.lineWidth = 2;
   
   // 横の線
@@ -1353,6 +1855,65 @@ const drawStaticForeground = (ctx: CanvasRenderingContext2D, cameraX: number) =>
       ctx.lineTo(x, yPos + GROUND_LAYERS.BRICK_HEIGHT);
       ctx.stroke();
     }
+  }
+  
+  // レンガの質感
+  ctx.fillStyle = colors.accent;
+  for (let i = 0; i < 80; i++) {
+    const textureX = (i * 13) % (GAME_CONFIG.CANVAS_WIDTH + 200) + cameraX - 100;
+    const textureY = GROUND_LAYERS.ROAD_Y + 20 + Math.random() * (GROUND_LAYERS.ROAD_HEIGHT - 40);
+    if (textureX > cameraX - 100 && textureX < cameraX + GAME_CONFIG.CANVAS_WIDTH + 100) {
+      ctx.fillRect(textureX, textureY, 2, 2);
+    }
+  }
+};
+
+/**
+ * エジプト風砂道パターンを描画
+ */
+const drawEgyptianSandRoad = (ctx: CanvasRenderingContext2D, cameraX: number, colors: ThemeGroundColors) => {
+  // 砂の波模様
+  ctx.strokeStyle = colors.line;
+  ctx.lineWidth = 1;
+  
+  // 波状のパターン
+  for (let i = 0; i < 8; i++) {
+    const waveY = GROUND_LAYERS.ROAD_Y + 30 + i * 12;
+    ctx.beginPath();
+    ctx.moveTo(cameraX - 100, waveY);
+    
+    for (let x = cameraX - 100; x < cameraX + GAME_CONFIG.CANVAS_WIDTH + 100; x += 20) {
+      const waveOffset = Math.sin(x * 0.02 + i * 0.5) * 3;
+      ctx.lineTo(x, waveY + waveOffset);
+    }
+    ctx.stroke();
+  }
+  
+  // 砂の粒子パターン
+  ctx.fillStyle = colors.accent;
+  for (let i = 0; i < 150; i++) {
+    const sandX = (i * 17) % (GAME_CONFIG.CANVAS_WIDTH + 200) + cameraX - 100;
+    const sandY = GROUND_LAYERS.ROAD_Y + 25 + Math.sin(sandX * 0.1) * 30 + Math.random() * 20;
+    if (sandX > cameraX - 100 && sandX < cameraX + GAME_CONFIG.CANVAS_WIDTH + 100) {
+      ctx.beginPath();
+      ctx.arc(sandX, sandY, 1 + Math.random(), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  // 風の跡（砂丘のような模様）
+  ctx.strokeStyle = `rgba(210, 105, 30, 0.3)`;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const duneY = GROUND_LAYERS.ROAD_Y + 40 + i * 20;
+    ctx.beginPath();
+    ctx.moveTo(cameraX - 100, duneY);
+    
+    for (let x = cameraX - 100; x < cameraX + GAME_CONFIG.CANVAS_WIDTH + 100; x += 30) {
+      const duneOffset = Math.sin(x * 0.01 + i) * 8;
+      ctx.lineTo(x, duneY + duneOffset);
+    }
+    ctx.stroke();
   }
 };
 

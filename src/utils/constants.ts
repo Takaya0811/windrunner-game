@@ -33,7 +33,9 @@ export const GAME_CONFIG = {
   // 障害物の設定
   OBSTACLE_MIN_DISTANCE: 280,  // 障害物間の最小距離
   OBSTACLE_SPAWN_RATE: 0.012,  // 障害物の生成確率
-  SPIKE_SPAWN_RATE: 0.6,       // 金属スパイクの生成確率（残りは鳥）
+  SPIKE_SPAWN_RATE: 0.4,       // 金属スパイクの生成確率
+  BIRD_SPAWN_RATE: 0.3,        // 鳥の生成確率
+  PITFALL_SPAWN_RATE: 0.3,     // 落とし穴の生成確率（残りの確率）
   
   // 金属スパイクの設定
   SPIKE_WIDTH: 30,
@@ -48,6 +50,11 @@ export const GAME_CONFIG = {
   BIRD_MOVEMENT_SPEED: 0.1,   // 鳥の上下動作速度（1秒で1往復）
   BIRD_TRACKING_RANGE: 300,   // プレイヤーを追跡する距離（ピクセル）
   BIRD_TRACKING_SPEED: 0.5,   // プレイヤー追跡速度（軽く寄ってくる程度）
+  
+  // 落とし穴の設定
+  PITFALL_WIDTH: 100,         // 落とし穴の幅（ジャンプで飛び越えられる幅）
+  PITFALL_HEIGHT: 80,         // 落とし穴の深さ（見た目用）
+  PITFALL_Y: 300,             // 落とし穴のY位置（地面と同じ）
   
   // 収集アイテムの設定
   COLLECTIBLE_SPAWN_RATE: 0.008,  // アイテムの生成確率
@@ -179,5 +186,12 @@ export const GROUND_LAYERS = {
 // 天気システムの設定
 export const WEATHER_CONFIG = {
   WEATHER_CHANGE_DISTANCE: 1000,  // 天気が変わる距離間隔（ピクセル）
+  WEATHER_TRANSITION_DISTANCE: 200,  // 天気変更の段階的変化の距離（ピクセル）
   WEATHER_CYCLE: ['day', 'night', 'sunny', 'rainy'] as const,  // 天気の循環順序
+};
+
+// 背景テーマシステムの設定
+export const BACKGROUND_CONFIG = {
+  BACKGROUND_CHANGE_DISTANCE: 5000,  // 背景テーマが変わる距離間隔（ピクセル）
+  BACKGROUND_CYCLE: ['japan', 'china', 'europe', 'egypt'] as const,  // 背景テーマの循環順序
 };

@@ -25,7 +25,7 @@ export interface Obstacle {
   y: number;                    // 縦位置（ピクセル）
   width: number;                // 幅（ピクセル）
   height: number;               // 高さ（ピクセル）
-  type: 'spike' | 'bird';       // 障害物の種類（金属スパイクまたは鳥）
+  type: 'spike' | 'bird' | 'pitfall';       // 障害物の種類（金属スパイク、鳥、または落とし穴）
   baseY?: number;               // 基準Y位置（鳥の上下動作用）
   animationTime?: number;       // アニメーション時間（鳥の上下動作用）
   velocityX?: number;           // X方向の速度（鳥の追跡用）
@@ -45,11 +45,24 @@ export interface Collectible {
 // 天気の種類
 export type WeatherType = 'day' | 'night' | 'sunny' | 'rainy';
 
+// 背景テーマの種類
+export type BackgroundTheme = 'japan' | 'china' | 'europe' | 'egypt';
+
+// 背景テーマ情報を管理する型
+export interface BackgroundInfo {
+  current: BackgroundTheme;   // 現在の背景テーマ
+  distance: number;           // プレイヤーが進んだ総距離
+  changeDistance: number;     // 次の背景変更までの距離
+}
+
 // 天気情報を管理する型
 export interface Weather {
   current: WeatherType;      // 現在の天気
+  next: WeatherType;         // 次の天気
   distance: number;          // プレイヤーが進んだ総距離
   changeDistance: number;    // 次の天気変更までの距離
+  transitionProgress: number; // 天気変更の進行度（0.0-1.0）
+  isTransitioning: boolean;  // 天気変更中かどうか
 }
 
 // ゲームの全体的な状態を管理する型
@@ -62,6 +75,7 @@ export interface GameState {
   obstacles: Obstacle[];     // 障害物のリスト
   collectibles: Collectible[]; // 収集アイテムのリスト
   weather: Weather;          // 天気情報
+  backgroundInfo: BackgroundInfo; // 背景テーマ情報
 }
 
 // 衝突判定で使用する矩形の型

@@ -9,8 +9,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Character, Obstacle, Collectible, Weather } from '@/types/game';
-import { GAME_CONFIG, WEATHER_CONFIG } from '@/utils/constants';
+import { Character, Obstacle, Collectible, Weather, BackgroundInfo } from '@/types/game';
+import { GAME_CONFIG, WEATHER_CONFIG, BACKGROUND_CONFIG } from '@/utils/constants';
 
 /**
  * useGameStateのパラメータ型定義
@@ -75,8 +75,18 @@ export const useGameState = (params?: UseGameStateParams) => {
   // 天気状態
   const [weather, setWeather] = useState<Weather>({
     current: 'day',
+    next: 'night',
     distance: 0,
     changeDistance: WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+    transitionProgress: 0,
+    isTransitioning: false,
+  });
+
+  // 背景テーマ状態
+  const [backgroundInfo, setBackgroundInfo] = useState<BackgroundInfo>({
+    current: 'japan',
+    distance: 0,
+    changeDistance: BACKGROUND_CONFIG.BACKGROUND_CHANGE_DISTANCE,
   });
 
   // 最新状態のRef（パフォーマンス最適化用）
@@ -87,8 +97,16 @@ export const useGameState = (params?: UseGameStateParams) => {
   const collectiblesRef = useRef<Collectible[]>([]);
   const weatherRef = useRef<Weather>({
     current: 'day',
+    next: 'night',
     distance: 0,
     changeDistance: WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+    transitionProgress: 0,
+    isTransitioning: false,
+  });
+  const backgroundInfoRef = useRef<BackgroundInfo>({
+    current: 'japan',
+    distance: 0,
+    changeDistance: BACKGROUND_CONFIG.BACKGROUND_CHANGE_DISTANCE,
   });
 
   // 状態変更時にRefを更新（パフォーマンス最適化）
@@ -116,26 +134,87 @@ export const useGameState = (params?: UseGameStateParams) => {
     weatherRef.current = weather;
   }, [weather]);
 
+  useEffect(() => {
+    backgroundInfoRef.current = backgroundInfo;
+  }, [backgroundInfo]);
+
   /**
-   * 天気を変更する関数
+   * 天気を変更する関数（段階的変更対応）
    */
   const updateWeather = (distance: number) => {
     setWeather(prev => {
       const newDistance = distance;
+      const transitionStartDistance = prev.changeDistance - WEATHER_CONFIG.WEATHER_TRANSITION_DISTANCE;
       
+      // 天気変更完了
       if (newDistance >= prev.changeDistance) {
         // 次の天気を計算（循環）
-        const currentIndex = WEATHER_CONFIG.WEATHER_CYCLE.indexOf(prev.current);
-        const nextIndex = (currentIndex + 1) % WEATHER_CONFIG.WEATHER_CYCLE.length;
-        const nextWeather = WEATHER_CONFIG.WEATHER_CYCLE[nextIndex];
+        const currentIndex = WEATHER_CONFIG.WEATHER_CYCLE.indexOf(prev.next);
+        const nextNextIndex = (currentIndex + 1) % WEATHER_CONFIG.WEATHER_CYCLE.length;
+        const nextNextWeather = WEATHER_CONFIG.WEATHER_CYCLE[nextNextIndex];
         
         return {
-          current: nextWeather,
+          current: prev.next,
+          next: nextNextWeather,
           distance: newDistance,
           changeDistance: prev.changeDistance + WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+          transitionProgress: 0,
+          isTransitioning: false,
         };
       }
       
+      // 天気変更開始
+      if (newDistance >= transitionStartDistance && !prev.isTransitioning) {
+        return {
+          ...prev,
+          distance: newDistance,
+          isTransitioning: true,
+          transitionProgress: 0,
+        };
+      }
+      
+      // 天気変更中
+      if (prev.isTransitioning) {
+        const progressDistance = newDistance - transitionStartDistance;
+        const progress = Math.min(progressDistance / WEATHER_CONFIG.WEATHER_TRANSITION_DISTANCE, 1);
+        
+        return {
+          ...prev,
+          distance: newDistance,
+          transitionProgress: progress,
+        };
+      }
+      
+      // 通常状態
+      return {
+        ...prev,
+        distance: newDistance,
+      };
+    });
+  };
+
+  /**
+   * 背景テーマを変更する関数
+   */
+  const updateBackgroundInfo = (distance: number) => {
+    setBackgroundInfo(prev => {
+      const newDistance = distance;
+      
+      // 背景変更完了
+      if (newDistance >= prev.changeDistance) {
+        // 次の背景テーマを計算（循環）
+        const currentIndex = BACKGROUND_CONFIG.BACKGROUND_CYCLE.indexOf(prev.current);
+        const nextIndex = (currentIndex + 1) % BACKGROUND_CONFIG.BACKGROUND_CYCLE.length;
+        const nextTheme = BACKGROUND_CONFIG.BACKGROUND_CYCLE[nextIndex];
+        
+        return {
+          current: nextTheme,
+          distance: newDistance,
+          changeDistance: prev.changeDistance + BACKGROUND_CONFIG.BACKGROUND_CHANGE_DISTANCE,
+        };
+      }
+      
+      // 通常状態
       return {
         ...prev,
         distance: newDistance,
@@ -169,8 +248,18 @@ export const useGameState = (params?: UseGameStateParams) => {
     // 天気状態をリセット
     setWeather({
       current: 'day',
+      next: 'night',
       distance: 0,
       changeDistance: WEATHER_CONFIG.WEATHER_CHANGE_DISTANCE,
+      transitionProgress: 0,
+      isTransitioning: false,
+    });
+    
+    // 背景テーマ状態をリセット
+    setBackgroundInfo({
+      current: 'japan',
+      distance: 0,
+      changeDistance: BACKGROUND_CONFIG.BACKGROUND_CHANGE_DISTANCE,
     });
     
     // キー入力状態もリセット
@@ -259,6 +348,7 @@ export const useGameState = (params?: UseGameStateParams) => {
     gameOver,
     gameStarted,
     weather,
+    backgroundInfo,
     
     // 状態更新関数
     setCharacter,
@@ -269,6 +359,7 @@ export const useGameState = (params?: UseGameStateParams) => {
     setGameOver,
     setGameStarted,
     setWeather,
+    setBackgroundInfo,
     
     // 最新状態のRef（パフォーマンス最適化用）
     characterRef,
@@ -277,6 +368,7 @@ export const useGameState = (params?: UseGameStateParams) => {
     obstaclesRef,
     collectiblesRef,
     weatherRef,
+    backgroundInfoRef,
     
     // ゲーム制御関数
     startGame,
@@ -286,5 +378,6 @@ export const useGameState = (params?: UseGameStateParams) => {
     addScore,
     resetGameState,
     updateWeather,
+    updateBackgroundInfo,
   };
 };

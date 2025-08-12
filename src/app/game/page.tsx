@@ -11,11 +11,11 @@ export default function GamePage() {
   // ゲーム状態管理（カスタムフックで最適化）
   const {
     score,
-
     gameSpeed,
     gameOver,
     gameStarted,
     weather,
+    backgroundInfo,
     setCharacter,
     setObstacles,
     setCollectibles,
@@ -23,12 +23,14 @@ export default function GamePage() {
     setGameSpeed,
     setGameOver,
     updateWeather,
+    updateBackgroundInfo,
     characterRef,
     scoreRef,
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
     weatherRef,
+    backgroundInfoRef,
     startGame,
     restartGame,
   } = useGameState({ keysRef });
@@ -71,12 +73,14 @@ export default function GamePage() {
     setGameSpeed,
     setGameOver,
     updateWeather,
+    updateBackgroundInfo,
     characterRef,
     scoreRef,
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
-    weatherRef
+    weatherRef,
+    backgroundInfoRef
   });
 
   return (
@@ -94,10 +98,40 @@ export default function GamePage() {
           </div>
           <div className="text-lg">
             天気: <span className="text-orange-600">{
-              weather.current === 'day' ? '昼' :
-              weather.current === 'night' ? '夜' :
-              weather.current === 'sunny' ? '晴れ' :
-              weather.current === 'rainy' ? '雨' : weather.current
+              (() => {
+                const getCurrentWeatherText = (type: string) => {
+                  switch (type) {
+                    case 'day': return '昼';
+                    case 'night': return '夜';
+                    case 'sunny': return '晴れ';
+                    case 'rainy': return '雨';
+                    default: return type;
+                  }
+                };
+                
+                if (weather.isTransitioning) {
+                  const progress = Math.round(weather.transitionProgress * 100);
+                  return `${getCurrentWeatherText(weather.current)}→${getCurrentWeatherText(weather.next)} (${progress}%)`;
+                } else {
+                  return getCurrentWeatherText(weather.current);
+                }
+              })()
+            }</span>
+          </div>
+          <div className="text-lg">
+            背景: <span className="text-purple-600">{
+              (() => {
+                const getBackgroundText = (theme: string) => {
+                  switch (theme) {
+                    case 'japan': return '日本';
+                    case 'china': return '中国';
+                    case 'europe': return 'ヨーロッパ';
+                    case 'egypt': return 'エジプト';
+                    default: return theme;
+                  }
+                };
+                return getBackgroundText(backgroundInfo.current);
+              })()
             }</span>
           </div>
         </div>
@@ -139,7 +173,8 @@ export default function GamePage() {
             <p>🚀 スペースキー: ジャンプ</p>
             <p>⬅️➡️ 矢印キー: 左右移動</p>
             <p>⭐ 黄色い星を集めてスコアアップ!</p>
-            <p>🔩🐦 金属スパイクと鳥を避けよう!</p>
+            <p>🔩🐦🕳️ 金属スパイク、鳥、落とし穴を避けよう!</p>
+            <p>💡 落とし穴に落ちると画面下まで落下してゲームオーバー！</p>
           </div>
         </div>
       </div>

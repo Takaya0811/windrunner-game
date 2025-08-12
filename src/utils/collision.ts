@@ -36,6 +36,12 @@ export const checkCollision = (rect1: Rectangle, rect2: Rectangle): boolean => {
  * @returns 衝突している場合はtrue、していない場合はfalse
  */
 export const checkCharacterObstacleCollision = (character: Character, obstacle: Obstacle): boolean => {
+  // 落とし穴の場合は衝突判定なし（別の仕組みで落下処理）
+  if (obstacle.type === 'pitfall') {
+    return false;
+  }
+  
+  // 通常の障害物の場合は従来の衝突判定
   return checkCollision(character, obstacle);
 };
 

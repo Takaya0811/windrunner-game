@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Character, Obstacle, Collectible, Weather } from '@/types/game';
+import { Character, Obstacle, Collectible, Weather, BackgroundInfo } from '@/types/game';
 import { GAME_CONFIG } from '@/utils/constants';
 import { drawCharacter, drawObstacle, drawCollectible, drawStaticBackground } from '@/utils/drawing';
 import { checkCharacterObstacleCollision, checkCharacterCollectibleCollision } from '@/utils/collision';
@@ -35,6 +35,7 @@ interface UseRunnerGameLoopParams {
   setGameSpeed: React.Dispatch<React.SetStateAction<number>>;
   setGameOver: React.Dispatch<React.SetStateAction<boolean>>;
   updateWeather: (distance: number) => void;
+  updateBackgroundInfo: (distance: number) => void;
   
   // ref
   characterRef: React.MutableRefObject<Character | null>;
@@ -43,6 +44,7 @@ interface UseRunnerGameLoopParams {
   obstaclesRef: React.MutableRefObject<Obstacle[]>;
   collectiblesRef: React.MutableRefObject<Collectible[]>;
   weatherRef: React.MutableRefObject<Weather>;
+  backgroundInfoRef: React.MutableRefObject<BackgroundInfo>;
 }
 
 /**
@@ -61,11 +63,13 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     setGameSpeed,
     setGameOver,
     updateWeather,
+    updateBackgroundInfo,
     characterRef,
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
-    weatherRef
+    weatherRef,
+    backgroundInfoRef
   } = params;
 
   const gameLoopRef = useRef<number | null>(null);
@@ -111,6 +115,9 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
       // 天気システム更新：プレイヤーの移動距離に基づいて天気を更新
       updateWeather(newChar.x);
       
+      // 背景テーマ更新：プレイヤーの移動距離に基づいて背景テーマを更新
+      updateBackgroundInfo(newChar.x);
+      
       // ジャンプ処理
       if (keysRef.current?.['Space'] && !newChar.isJumping) {
         newChar.velocityY = GAME_CONFIG.JUMP_FORCE;
@@ -130,11 +137,31 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
         newChar.y += newChar.velocityY;
         newChar.velocityY += GAME_CONFIG.GRAVITY;
         
-        // 地面に着地したかチェック
-        if (newChar.y >= GAME_CONFIG.GROUND_Y) {
+        // 落とし穴の上にいるかチェック
+        const isOverPitfall = obstaclesRef.current?.some(obstacle => 
+          obstacle.type === 'pitfall' &&
+          newChar.x + newChar.width > obstacle.x &&
+          newChar.x < obstacle.x + obstacle.width
+        ) || false;
+        
+        // 地面に着地したかチェック（落とし穴の上でない場合のみ）
+        if (!isOverPitfall && newChar.y >= GAME_CONFIG.GROUND_Y) {
           newChar.y = GAME_CONFIG.GROUND_Y;
           newChar.isJumping = false;
           newChar.velocityY = 0;
+        }
+      } else {
+        // 地面にいるときも落とし穴チェックが必要
+        const isOverPitfall = obstaclesRef.current?.some(obstacle => 
+          obstacle.type === 'pitfall' &&
+          newChar.x + newChar.width > obstacle.x &&
+          newChar.x < obstacle.x + obstacle.width
+        ) || false;
+        
+        // 落とし穴の上にいる場合は落下開始
+        if (isOverPitfall && newChar.y >= GAME_CONFIG.GROUND_Y) {
+          newChar.isJumping = true;
+          newChar.velocityY = 0; // 落下開始時の速度
         }
       }
       
@@ -160,7 +187,17 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
                          (!lastObstacle || (characterX + GAME_CONFIG.CANVAS_WIDTH - lastObstacle.x) > GAME_CONFIG.OBSTACLE_MIN_DISTANCE);
       
       if (shouldSpawn) {
-        let type: 'spike' | 'bird' = Math.random() < GAME_CONFIG.SPIKE_SPAWN_RATE ? 'spike' : 'bird';
+        // 3つの障害物タイプから確率的に選択
+        const randomValue = Math.random();
+        let type: 'spike' | 'bird' | 'pitfall';
+        
+        if (randomValue < GAME_CONFIG.SPIKE_SPAWN_RATE) {
+          type = 'spike';
+        } else if (randomValue < GAME_CONFIG.SPIKE_SPAWN_RATE + GAME_CONFIG.BIRD_SPAWN_RATE) {
+          type = 'bird';
+        } else {
+          type = 'pitfall';
+        }
         
         // 障害物の重なりを回避するため、最後の障害物と同じ範囲を避ける
         if (lastObstacle) {
@@ -170,29 +207,29 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
           // 距離が近すぎる場合、異なる高度の障害物を優先的に選択
           if (distance < GAME_CONFIG.OBSTACLE_MIN_DISTANCE * 1.5) {
             if (lastObstacle.type === 'spike') {
-              // 前がスパイクなら鳥を生成
-              type = 'bird';
+              // 前がスパイクなら鳥または落とし穴を生成
+              type = Math.random() < 0.5 ? 'bird' : 'pitfall';
             } else if (lastObstacle.type === 'bird') {
-              // 前が鳥の場合、追跡範囲を考慮してスパイクを生成
-              // 鳥は追跡により位置が変わるため、より大きな余裕を持たせる
-              const birdTrackingMaxY = GAME_CONFIG.BIRD_Y + (GAME_CONFIG.BIRD_MOVEMENT_RANGE / 2) + 30; // 追跡による移動余裕
-              const spikeY = GAME_CONFIG.SPIKE_Y;
-              
-              // スパイクと鳥の追跡範囲が重ならないことを確認
-              if (spikeY > birdTrackingMaxY + 40) { // より大きな余裕（40ピクセル）
-                type = 'spike';
-              } else {
-                type = 'bird'; // 重なる可能性があるので鳥のまま（追跡で分散させる）
-              }
+              // 前が鳥の場合、スパイクまたは落とし穴を生成
+              type = Math.random() < 0.5 ? 'spike' : 'pitfall';
+            } else if (lastObstacle.type === 'pitfall') {
+              // 前が落とし穴の場合、スパイクまたは鳥を生成
+              type = Math.random() < 0.5 ? 'spike' : 'bird';
             }
           }
         }
         
         const obstacle: Obstacle = {
           x: characterX + GAME_CONFIG.CANVAS_WIDTH, // キャラクターの前方に生成
-          y: type === 'spike' ? GAME_CONFIG.SPIKE_Y : GAME_CONFIG.BIRD_Y,
-          width: type === 'spike' ? GAME_CONFIG.SPIKE_WIDTH : GAME_CONFIG.BIRD_WIDTH,
-          height: type === 'spike' ? GAME_CONFIG.SPIKE_HEIGHT : GAME_CONFIG.BIRD_HEIGHT,
+          y: type === 'spike' ? GAME_CONFIG.SPIKE_Y : 
+             type === 'bird' ? GAME_CONFIG.BIRD_Y : 
+             GAME_CONFIG.PITFALL_Y,
+          width: type === 'spike' ? GAME_CONFIG.SPIKE_WIDTH : 
+                 type === 'bird' ? GAME_CONFIG.BIRD_WIDTH : 
+                 GAME_CONFIG.PITFALL_WIDTH,
+          height: type === 'spike' ? GAME_CONFIG.SPIKE_HEIGHT : 
+                  type === 'bird' ? GAME_CONFIG.BIRD_HEIGHT : 
+                  GAME_CONFIG.PITFALL_HEIGHT,
           type: type
         };
         
@@ -331,8 +368,14 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     setScore(prev => prev + 1);
     setGameSpeed(prev => Math.min(prev + GAME_CONFIG.SPEED_INCREASE, GAME_CONFIG.MAX_GAME_SPEED));
 
-    // 6. 衝突判定
+    // 6. 落下判定とゲームオーバーチェック
     if (currentCharacter) {
+      // キャラクターが画面下に落ちた場合のゲームオーバー判定
+      if (currentCharacter.y > GAME_CONFIG.CANVAS_HEIGHT + 100) {
+        setGameOver(true);
+        return;
+      }
+      
       // 障害物との衝突判定
       obstaclesRef.current?.forEach(obstacle => {
         if (checkCharacterObstacleCollision(currentCharacter, obstacle)) {
@@ -361,9 +404,21 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     ctx.save();
     ctx.translate(-cameraX, 0);
     
-    // 固定背景を描画（天気情報を含む）
-    const currentWeather = weatherRef.current?.current || 'day';
-    drawStaticBackground(ctx, cameraX, currentWeather);
+    // 固定背景を描画（天気情報と背景テーマ情報を含む）
+    const currentWeather = weatherRef.current || {
+      current: 'day' as const,
+      next: 'night' as const,
+      distance: 0,
+      changeDistance: 1000,
+      transitionProgress: 0,
+      isTransitioning: false,
+    };
+    const currentBackgroundInfo = backgroundInfoRef.current || {
+      current: 'japan' as const,
+      distance: 0,
+      changeDistance: 2500,
+    };
+    drawStaticBackground(ctx, cameraX, currentWeather, currentBackgroundInfo);
     
     // キャラクター描画
     if (currentCharacter) {
@@ -390,11 +445,13 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     setGameSpeed, 
     setGameOver,
     updateWeather,
+    updateBackgroundInfo,
     characterRef,
     gameSpeedRef,
     obstaclesRef,
     collectiblesRef,
     weatherRef,
+    backgroundInfoRef,
     updateCamera
   ]);
 
