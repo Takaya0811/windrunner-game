@@ -25,7 +25,8 @@ import {
   BUILDINGS, 
   CLOUDS,
   PARALLAX,
-  GROUND_LAYERS
+  GROUND_LAYERS,
+  ANIMATION
 } from '../utils/constants';
 
 // パララックス背景の計算値型定義
@@ -624,21 +625,128 @@ export const drawObstacle = (ctx: CanvasRenderingContext2D, obstacle: Obstacle) 
     ctx.stroke();
     
   } else if (obstacle.type === 'bird') {
-    // 鳥
-    ctx.fillStyle = COLORS.BIRD_BODY_COLOR;
+    // 純白の鳥（白鳥+カラスの特徴を組み合わせ）
+    const centerX = obstacle.x + obstacle.width / 2;
+    const centerY = obstacle.y + obstacle.height / 2;
+    
+    // 羽ばたきアニメーション（現在時刻ベース）
+    const time = Date.now() * ANIMATION.BIRD_FLAP_SPEED;
+    const flapAngle = Math.sin(time) * ANIMATION.BIRD_FLAP_AMPLITUDE;
+    
+    // 鳥の影
+    ctx.fillStyle = COLORS.BIRD_SHADOW_COLOR;
     ctx.beginPath();
-    ctx.ellipse(obstacle.x + 15, obstacle.y + 10, 15, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX + 1, centerY + 1, 12, 7, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // 翼
-    ctx.strokeStyle = COLORS.BIRD_WING_COLOR;
-    ctx.lineWidth = 3;
+    // 鳥の本体（楕円形でカラスらしいシルエット）
+    ctx.fillStyle = COLORS.BIRD_BODY_COLOR;
     ctx.beginPath();
-    ctx.moveTo(obstacle.x, obstacle.y + 5);
-    ctx.lineTo(obstacle.x + 10, obstacle.y - 5);
-    ctx.moveTo(obstacle.x + 30, obstacle.y + 5);
-    ctx.lineTo(obstacle.x + 20, obstacle.y - 5);
-    ctx.stroke();
+    ctx.ellipse(centerX, centerY, 12, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 頭部（少し大きめでカラスらしく）
+    ctx.fillStyle = COLORS.BIRD_BODY_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(centerX + 8, centerY - 3, 8, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // くちばし（尖った三角形）
+    ctx.fillStyle = COLORS.BIRD_BEAK_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(centerX + 15, centerY - 3);
+    ctx.lineTo(centerX + 20, centerY - 2);
+    ctx.lineTo(centerX + 15, centerY - 1);
+    ctx.closePath();
+    ctx.fill();
+    
+    // 目
+    ctx.fillStyle = COLORS.BIRD_EYE_COLOR;
+    ctx.beginPath();
+    ctx.arc(centerX + 11, centerY - 4, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 白いハイライト
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.beginPath();
+    ctx.arc(centerX + 11.5, centerY - 4.5, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 尻尾（カラスらしい形状）
+    ctx.fillStyle = COLORS.BIRD_BODY_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(centerX - 12, centerY + 2, 6, 3, Math.PI / 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 左翼（白鳥らしい大きな翼）
+    ctx.save();
+    ctx.translate(centerX - 5, centerY);
+    ctx.rotate((flapAngle * Math.PI / 180) - Math.PI / 12);
+    
+    // 翼の影
+    ctx.fillStyle = COLORS.BIRD_SHADOW_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(1, 1, 15, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 翼本体
+    ctx.fillStyle = COLORS.BIRD_WING_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 翼の羽根模様
+    ctx.strokeStyle = COLORS.BIRD_SHADOW_COLOR;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-10 + i * 5, -2);
+      ctx.lineTo(-8 + i * 5, 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    
+    // 右翼（白鳥らしい大きな翼）
+    ctx.save();
+    ctx.translate(centerX - 5, centerY);
+    ctx.rotate((-flapAngle * Math.PI / 180) + Math.PI / 12);
+    
+    // 翼の影
+    ctx.fillStyle = COLORS.BIRD_SHADOW_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(1, 1, 15, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 翼本体
+    ctx.fillStyle = COLORS.BIRD_WING_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 翼の羽根模様
+    ctx.strokeStyle = COLORS.BIRD_SHADOW_COLOR;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-10 + i * 5, -2);
+      ctx.lineTo(-8 + i * 5, 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    
+    // 羽ばたきエフェクト（風のライン）
+    if (Math.abs(flapAngle) > 10) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        const effectX = centerX - 20 - i * 3;
+        const effectY = centerY + (Math.random() - 0.5) * 10;
+        ctx.beginPath();
+        ctx.moveTo(effectX, effectY);
+        ctx.lineTo(effectX - 8, effectY);
+        ctx.stroke();
+      }
+    }
     
   } else if (obstacle.type === 'pitfall') {
     // 落とし穴

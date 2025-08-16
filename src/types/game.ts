@@ -17,6 +17,7 @@ export interface Character {
   velocityY: number;      // 縦方向の速度（ジャンプ・落下）
   isJumping: boolean;     // ジャンプ中かどうか
   animationFrame: number; // アニメーション用のフレーム数
+  lastMovement?: number;  // 最後のフレームでの移動量（スコア計算用）
 }
 
 // 障害物の情報を管理する型

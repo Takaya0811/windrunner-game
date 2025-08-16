@@ -19,7 +19,7 @@ export const GAME_CONFIG = {
   JUMP_FORCE: -15,        // ジャンプ力（負の値で上向き）
   
   // キャラクターの設定
-  PLAYER_SPEED: 3,        // プレイヤーの移動速度
+  PLAYER_SPEED: 6,        // プレイヤーの移動速度（操作しやすく適度な速度）
   PLAYER_WIDTH: 40,       // プレイヤーの幅
   PLAYER_HEIGHT: 60,      // プレイヤーの高さ
   PLAYER_START_X: 100,    // プレイヤーの開始X位置
@@ -45,7 +45,7 @@ export const GAME_CONFIG = {
   // 鳥の設定
   BIRD_WIDTH: 30,
   BIRD_HEIGHT: 20,
-  BIRD_Y: 250,
+  BIRD_Y: 280,                // ジャンプで飛び越えられる高さに調整
   BIRD_MOVEMENT_RANGE: 40,    // 鳥の上下動作範囲（ピクセル）
   BIRD_MOVEMENT_SPEED: 0.1,   // 鳥の上下動作速度（1秒で1往復）
   BIRD_TRACKING_RANGE: 300,   // プレイヤーを追跡する距離（ピクセル）
@@ -104,8 +104,13 @@ export const COLORS = {
   SPIKE_SHADOW_COLOR: '#2D3748',    // スパイクの影色
   SPIKE_HIGHLIGHT_COLOR: '#718096', // スパイクのハイライト色
   SPIKE_THORN_COLOR: '#1A202C',     // 小さなトゲの色
-  BIRD_BODY_COLOR: '#8B4513',
-  BIRD_WING_COLOR: '#654321',
+  
+  // 鳥の色（純白の鳥）
+  BIRD_BODY_COLOR: '#FFFFFF',       // 純白の体
+  BIRD_WING_COLOR: '#FFFFFF',       // 純白の翼
+  BIRD_SHADOW_COLOR: '#E0E0E0',     // 鳥の影（薄いグレー）
+  BIRD_BEAK_COLOR: '#FFD700',       // くちばし（金色）
+  BIRD_EYE_COLOR: '#000000',        // 目（黒）
   
   // アイテムの色
   COLLECTIBLE_COLOR: '#FFD700',
@@ -138,6 +143,10 @@ export const ANIMATION = {
   BLINK_DURATION: 5,        // まばたきの持続時間（フレーム）
   HAIR_WAVE_SPEED: 0.1,     // 髪の揺れの速度
   HAIR_WAVE_AMPLITUDE: 1,   // 髪の揺れの振幅
+  
+  // 鳥のアニメーション設定
+  BIRD_FLAP_SPEED: 0.05,    // 羽ばたきの速度（ゆっくりとした優雅な動き）
+  BIRD_FLAP_AMPLITUDE: 20,  // 羽ばたきの振幅（角度）
 };
 
 // パララックス効果の設定

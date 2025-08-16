@@ -108,9 +108,29 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     // 1. キャラクター更新と天気更新
     setCharacter(prev => {
       const newChar = { ...prev };
+      let movementThisFrame = 0; // この フレームでの移動量を記録
       
-      // キャラクターを常に右に移動（ランナーゲームの基本動作）
-      newChar.x += currentGameSpeed;
+      // 双方向移動処理
+      const isLeftPressed = keysRef.current?.['ArrowLeft'];
+      const isRightPressed = keysRef.current?.['ArrowRight'];
+      
+      if (isLeftPressed && !isRightPressed) {
+        // 左矢印キー: 後退
+        const backwardMovement = -GAME_CONFIG.PLAYER_SPEED;
+        newChar.x = Math.max(0, newChar.x + backwardMovement);
+        movementThisFrame = backwardMovement;
+      } else if (isRightPressed && !isLeftPressed) {
+        // 右矢印キー: 前進
+        const forwardMovement = GAME_CONFIG.PLAYER_SPEED;
+        newChar.x += forwardMovement;
+        movementThisFrame = forwardMovement;
+      } else if (!isLeftPressed && !isRightPressed) {
+        // 無入力時: 緩やかな前進ドリフト
+        const driftMovement = currentGameSpeed * 0.3; // 通常速度の30%でドリフト
+        newChar.x += driftMovement;
+        movementThisFrame = driftMovement;
+      }
+      // 両方のキーが押されている場合は移動なし（movementThisFrame = 0のまま）
       
       // 天気システム更新：プレイヤーの移動距離に基づいて天気を更新
       updateWeather(newChar.x);
@@ -124,13 +144,8 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
         newChar.isJumping = true;
       }
       
-      // 左右移動処理（微調整用）
-      if (keysRef.current?.['ArrowLeft']) {
-        newChar.x = Math.max(0, newChar.x - GAME_CONFIG.PLAYER_SPEED);
-      }
-      if (keysRef.current?.['ArrowRight']) {
-        newChar.x += GAME_CONFIG.PLAYER_SPEED;
-      }
+      // このフレームの移動量を保存（スコア計算用）
+      newChar.lastMovement = movementThisFrame;
       
       // 重力処理
       if (newChar.isJumping) {
@@ -365,7 +380,12 @@ export const useRunnerGameLoop = (params: UseRunnerGameLoopParams) => {
     });
 
     // 5. スコアとゲーム速度の更新
-    setScore(prev => prev + 1);
+    // 前進時のみスコア加算（後退時や停止時は加算なし）
+    if (currentCharacter?.lastMovement && currentCharacter.lastMovement > 0) {
+      // 移動量に応じてスコア加算（リアルタイム加算、適度な速度に調整）
+      const scoreIncrement = Math.floor(currentCharacter.lastMovement / 3); // 適切なスコアバランスに調整
+      setScore(prev => prev + scoreIncrement);
+    }
     setGameSpeed(prev => Math.min(prev + GAME_CONFIG.SPEED_INCREASE, GAME_CONFIG.MAX_GAME_SPEED));
 
     // 6. 落下判定とゲームオーバーチェック
